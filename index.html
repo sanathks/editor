@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Editor - Markdown Editor</title>
-  <meta name="description" content="A beautiful block-level markdown editor. Click to edit, preview by default. Shareable via URL.">
+  <meta name="description" content="A beautiful line-level markdown editor. Click to edit, preview by default. Shareable via URL.">
   <script src="https://cdn.tailwindcss.com"></script>
   <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/lz-string@1.5.0/libs/lz-string.min.js"></script>
@@ -52,7 +52,6 @@
       display: flex; align-items: center; justify-content: center;
       background: transparent; border: none; border-radius: 8px;
       color: #a9b1d6; cursor: pointer; transition: all 0.15s;
-      position: relative;
     }
     .tool-btn:hover { background: rgba(122, 162, 247, 0.15); }
     .tool-btn.active { background: #7aa2f7; color: #1a1b26; }
@@ -81,108 +80,138 @@
       min-height: 100%;
     }
 
-    /* Block styles */
-    .block {
+    /* Line styles */
+    .line {
       position: relative;
-      border-radius: 4px;
-      transition: background 0.1s;
+      border-radius: 3px;
+      min-height: 1.6em;
       cursor: text;
     }
-    .block:hover {
-      background: rgba(122, 162, 247, 0.04);
+    .line:hover {
+      background: rgba(122, 162, 247, 0.03);
     }
-    .block.editing {
-      background: rgba(122, 162, 247, 0.08);
+    .line.editing {
+      background: rgba(122, 162, 247, 0.06);
+    }
+    .line.empty-line {
+      min-height: 1.2em;
     }
 
     /* Preview content styles */
-    .block-preview h1 { font-size: 2em; font-weight: 700; color: #c0caf5; margin: 0.6em 0 0.3em; line-height: 1.2; }
-    .block-preview h2 { font-size: 1.5em; font-weight: 600; color: #c0caf5; margin: 0.5em 0 0.25em; line-height: 1.3; border-bottom: 1px solid #414868; padding-bottom: 0.2em; }
-    .block-preview h3 { font-size: 1.25em; font-weight: 600; color: #c0caf5; margin: 0.4em 0 0.2em; }
-    .block-preview h4 { font-size: 1.1em; font-weight: 600; color: #c0caf5; margin: 0.3em 0 0.15em; }
-    .block-preview h5, .block-preview h6 { font-size: 1em; font-weight: 600; color: #a9b1d6; margin: 0.3em 0 0.15em; }
-    .block-preview p { margin: 0.4em 0; line-height: 1.7; }
-    .block-preview a { color: #7aa2f7; text-decoration: underline; }
-    .block-preview strong { color: #c0caf5; font-weight: 600; }
-    .block-preview em { color: #bb9af7; }
-    .block-preview code { 
+    .line-preview { line-height: 1.7; }
+    .line-preview h1 { font-size: 2em; font-weight: 700; color: #c0caf5; margin: 0.4em 0 0.2em; line-height: 1.2; }
+    .line-preview h2 { font-size: 1.5em; font-weight: 600; color: #c0caf5; margin: 0.35em 0 0.15em; line-height: 1.3; border-bottom: 1px solid #414868; padding-bottom: 0.15em; }
+    .line-preview h3 { font-size: 1.25em; font-weight: 600; color: #c0caf5; margin: 0.3em 0 0.1em; }
+    .line-preview h4 { font-size: 1.1em; font-weight: 600; color: #c0caf5; margin: 0.2em 0 0.1em; }
+    .line-preview h5, .line-preview h6 { font-size: 1em; font-weight: 600; color: #a9b1d6; }
+    .line-preview p { margin: 0; line-height: 1.7; }
+    .line-preview a { color: #7aa2f7; text-decoration: underline; }
+    .line-preview strong { color: #c0caf5; font-weight: 600; }
+    .line-preview em { color: #bb9af7; }
+    .line-preview code { 
       background: #24283b; padding: 2px 6px; border-radius: 4px; 
       font-family: 'JetBrains Mono', monospace; font-size: 0.85em; color: #ff9e64;
     }
-    .block-preview pre { 
-      background: #24283b; padding: 16px; border-radius: 8px; 
-      margin: 0.5em 0; overflow-x: auto; border: 1px solid #414868;
-    }
-    .block-preview pre code { background: none; padding: 0; color: #a9b1d6; display: block; }
-    .block-preview blockquote { 
-      border-left: 3px solid #7aa2f7; padding-left: 16px; margin: 0.5em 0;
+    .line-preview blockquote { 
+      border-left: 3px solid #7aa2f7; padding-left: 16px;
       color: #565f89; font-style: italic;
     }
-    .block-preview ul, .block-preview ol { padding-left: 1.5em; margin: 0.3em 0; }
-    .block-preview li { margin: 0.15em 0; line-height: 1.6; }
-    .block-preview hr { border: none; border-top: 1px solid #414868; margin: 1em 0; }
-    .block-preview del { color: #565f89; }
-    .block-preview img { max-width: 100%; border-radius: 8px; margin: 0.5em 0; }
-    
-    /* Table styles */
-    .block-preview table { 
-      border-collapse: collapse; width: 100%; margin: 0.5em 0;
-      border: 1px solid #414868;
-    }
-    .block-preview th { 
-      background: #24283b; padding: 8px 12px; text-align: left; 
-      border: 1px solid #414868; font-weight: 600; color: #c0caf5;
-    }
-    .block-preview td { 
-      padding: 8px 12px; border: 1px solid #414868;
-    }
+    .line-preview blockquote p { margin: 0; }
+    .line-preview hr { border: none; border-top: 1px solid #414868; margin: 0.8em 0; }
+    .line-preview del { color: #565f89; }
+    .line-preview img { max-width: 100%; border-radius: 8px; }
+    .line-preview ul, .line-preview ol { margin: 0; padding-left: 0; list-style: none; }
+    .line-preview li { margin: 0; line-height: 1.7; }
 
-    /* Checkbox styles */
-    .block-preview input[type="checkbox"] {
+    /* Checklist in preview */
+    .line-preview input[type="checkbox"] {
       appearance: none; -webkit-appearance: none;
       width: 18px; height: 18px; border: 2px solid #414868; border-radius: 4px;
       background: transparent; cursor: pointer; vertical-align: middle;
-      margin-right: 6px; position: relative; top: -1px;
+      margin-right: 6px; position: relative; top: -1px; display: inline-block;
     }
-    .block-preview input[type="checkbox"]:checked {
+    .line-preview input[type="checkbox"]:checked {
       background: #9ece6a; border-color: #9ece6a;
     }
-    .block-preview input[type="checkbox"]:checked::after {
+    .line-preview input[type="checkbox"]:checked::after {
       content: '✓'; color: #1a1b26; font-size: 12px; font-weight: bold;
       position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
     }
-    .block-preview li.task-list-item {
-      list-style: none; margin-left: -1.5em;
+    .task-checked { color: #9ece6a; text-decoration: line-through; }
+
+    /* Indented list items */
+    .list-indent { padding-left: 1.5em; }
+    .list-indent-2 { padding-left: 3em; }
+    .list-indent-3 { padding-left: 4.5em; }
+
+    /* Code block lines */
+    .code-block-line .line-preview {
+      background: #24283b;
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 13px;
+      padding: 0 16px;
+      line-height: 1.5;
+      color: #a9b1d6;
     }
-    .block-preview li.task-list-item.checked {
-      color: #9ece6a; text-decoration: line-through;
+    .code-block-start .line-preview {
+      border-top-left-radius: 8px;
+      border-top-right-radius: 8px;
+      padding-top: 12px;
+      border: 1px solid #414868;
+      border-bottom: none;
     }
+    .code-block-mid .line-preview {
+      border-left: 1px solid #414868;
+      border-right: 1px solid #414868;
+    }
+    .code-block-end .line-preview {
+      border-bottom-left-radius: 8px;
+      border-bottom-right-radius: 8px;
+      padding-bottom: 12px;
+      border: 1px solid #414868;
+      border-top: none;
+    }
+    .code-block-single .line-preview {
+      border-radius: 8px;
+      padding: 12px 16px;
+      border: 1px solid #414868;
+    }
+
+    /* Table styles */
+    .table-group { margin: 0.3em 0; }
+    .table-group table { 
+      border-collapse: collapse; width: 100%;
+      border: 1px solid #414868;
+    }
+    .table-group th { 
+      background: #24283b; padding: 8px 12px; text-align: left; 
+      border: 1px solid #414868; font-weight: 600; color: #c0caf5;
+    }
+    .table-group td { padding: 8px 12px; border: 1px solid #414868; }
 
     /* Collapsible headings */
     .collapse-toggle {
-      position: absolute; left: -24px; top: 50%; transform: translateY(-50%);
+      position: absolute; left: -24px; top: 4px;
       width: 20px; height: 20px; background: none; border: none;
       color: #565f89; cursor: pointer; font-size: 12px;
       display: flex; align-items: center; justify-content: center;
       border-radius: 4px; opacity: 0; transition: opacity 0.15s;
     }
-    .block:hover .collapse-toggle { opacity: 1; }
+    .line:hover .collapse-toggle { opacity: 1; }
     .collapse-toggle:hover { background: rgba(122, 162, 247, 0.15); color: #a9b1d6; }
-    .collapsed-children { display: none; }
 
-    /* Edit textarea */
-    .block-edit textarea {
+    /* Edit input */
+    .line-edit {
       width: 100%;
       background: transparent;
       color: #c0caf5;
       border: none;
       outline: none;
       font-family: 'JetBrains Mono', monospace;
-      font-size: 14px;
-      line-height: 1.6;
-      resize: none;
-      overflow: hidden;
-      padding: 4px 8px;
+      font-size: 15px;
+      line-height: 1.7;
+      padding: 0 4px;
+      caret-color: #7aa2f7;
     }
 
     /* Scrollbar */
@@ -227,155 +256,103 @@
 <body class="h-screen flex flex-col">
   <!-- Top Toolbar -->
   <header class="h-14 flex items-center px-4 z-20 fixed top-0 left-0 right-0" style="background:transparent;pointer-events:none">
-    <!-- Left: Logo -->
     <div class="flex items-center" style="pointer-events:auto">
       <div style="width:36px;height:36px;background:#7aa2f7;border-radius:10px;display:flex;align-items:center;justify-content:center;font-weight:700;color:#1a1b26;font-size:18px">E</div>
     </div>
     
-    <!-- Center: Tools -->
     <div class="flex-1 flex justify-center" style="pointer-events:auto">
       <div class="flex items-center gap-1 bg-storm-bg2 rounded-lg p-1 shadow-lg" style="border:1px solid rgba(255,255,255,0.1)">
         <!-- Undo/Redo -->
         <button class="tool-btn" onclick="doUndo()" title="Undo (Ctrl+Z)">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-            <path d="M3 10h10a5 5 0 1 1 0 10H9"/><polyline points="7 6 3 10 7 14"/>
-          </svg>
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 10h10a5 5 0 1 1 0 10H9"/><polyline points="7 6 3 10 7 14"/></svg>
         </button>
         <button class="tool-btn" onclick="doRedo()" title="Redo (Ctrl+Shift+Z)">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-            <path d="M21 10h-10a5 5 0 1 0 0 10h4"/><polyline points="17 6 21 10 17 14"/>
-          </svg>
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 10h-10a5 5 0 1 0 0 10h4"/><polyline points="17 6 21 10 17 14"/></svg>
         </button>
         <div class="divider"></div>
-        
-        <!-- Headings dropdown -->
+
+        <!-- Headings -->
         <div class="dropdown" id="headingDropdown">
           <button class="tool-btn" onclick="toggleDropdown('headingDropdown')" title="Headings">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-              <path d="M4 12h8M4 18V6M12 18V6M14.5 6h3l-2.5 6h3"/></svg>
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 12h8M4 18V6M12 18V6M14.5 6h3l-2.5 6h3"/></svg>
           </button>
           <div class="dropdown-menu">
-            <div class="dropdown-item" onclick="insertBlock('# Heading 1');closeDropdowns()"><strong style="font-size:18px">H1</strong> Heading 1</div>
-            <div class="dropdown-item" onclick="insertBlock('## Heading 2');closeDropdowns()"><strong style="font-size:16px">H2</strong> Heading 2</div>
-            <div class="dropdown-item" onclick="insertBlock('### Heading 3');closeDropdowns()"><strong style="font-size:14px">H3</strong> Heading 3</div>
+            <div class="dropdown-item" onclick="insertAtCursor('# ');closeDropdowns()"><strong style="font-size:18px">H1</strong> Heading 1</div>
+            <div class="dropdown-item" onclick="insertAtCursor('## ');closeDropdowns()"><strong style="font-size:16px">H2</strong> Heading 2</div>
+            <div class="dropdown-item" onclick="insertAtCursor('### ');closeDropdowns()"><strong style="font-size:14px">H3</strong> Heading 3</div>
           </div>
         </div>
 
         <!-- Bold -->
         <button class="tool-btn" onclick="wrapSelection('**')" title="Bold (Ctrl+B)">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
-            <path d="M6 4h8a4 4 0 0 1 4 4 4 4 0 0 1-4 4H6z"/><path d="M6 12h9a4 4 0 0 1 4 4 4 4 0 0 1-4 4H6z"/>
-          </svg>
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M6 4h8a4 4 0 0 1 4 4 4 4 0 0 1-4 4H6z"/><path d="M6 12h9a4 4 0 0 1 4 4 4 4 0 0 1-4 4H6z"/></svg>
         </button>
         <!-- Italic -->
         <button class="tool-btn" onclick="wrapSelection('*')" title="Italic (Ctrl+I)">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-            <line x1="19" y1="4" x2="10" y2="4"/><line x1="14" y1="20" x2="5" y2="20"/><line x1="15" y1="4" x2="9" y2="20"/>
-          </svg>
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="19" y1="4" x2="10" y2="4"/><line x1="14" y1="20" x2="5" y2="20"/><line x1="15" y1="4" x2="9" y2="20"/></svg>
         </button>
         <!-- Strikethrough -->
         <button class="tool-btn" onclick="wrapSelection('~~')" title="Strikethrough">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-            <path d="M16 4H9a3 3 0 0 0-3 3v0a3 3 0 0 0 3 3h6a3 3 0 0 1 3 3v0a3 3 0 0 1-3 3H8"/>
-            <line x1="4" y1="12" x2="20" y2="12"/>
-          </svg>
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M16 4H9a3 3 0 0 0-3 3v0a3 3 0 0 0 3 3h6a3 3 0 0 1 3 3v0a3 3 0 0 1-3 3H8"/><line x1="4" y1="12" x2="20" y2="12"/></svg>
         </button>
-        <!-- Code inline -->
+        <!-- Code -->
         <button class="tool-btn" onclick="wrapSelection('\`')" title="Inline Code">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-            <polyline points="16 18 22 12 16 6"/><polyline points="8 6 2 12 8 18"/>
-          </svg>
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="16 18 22 12 16 6"/><polyline points="8 6 2 12 8 18"/></svg>
         </button>
         
         <div class="divider"></div>
         
-        <!-- Bullet list -->
-        <button class="tool-btn" onclick="insertBlock('- Item')" title="Bullet List">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-            <line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/>
-            <circle cx="4" cy="6" r="1" fill="currentColor"/><circle cx="4" cy="12" r="1" fill="currentColor"/><circle cx="4" cy="18" r="1" fill="currentColor"/>
-          </svg>
+        <!-- Lists -->
+        <button class="tool-btn" onclick="insertAtCursor('- ')" title="Bullet List">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><circle cx="4" cy="6" r="1" fill="currentColor"/><circle cx="4" cy="12" r="1" fill="currentColor"/><circle cx="4" cy="18" r="1" fill="currentColor"/></svg>
         </button>
-        <!-- Numbered list -->
-        <button class="tool-btn" onclick="insertBlock('1. Item')" title="Numbered List">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-            <line x1="10" y1="6" x2="21" y2="6"/><line x1="10" y1="12" x2="21" y2="12"/><line x1="10" y1="18" x2="21" y2="18"/>
-            <text x="3" y="8" font-size="8" fill="currentColor" font-weight="600" stroke="none">1</text>
-            <text x="3" y="14" font-size="8" fill="currentColor" font-weight="600" stroke="none">2</text>
-            <text x="3" y="20" font-size="8" fill="currentColor" font-weight="600" stroke="none">3</text>
-          </svg>
+        <button class="tool-btn" onclick="insertAtCursor('1. ')" title="Numbered List">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="10" y1="6" x2="21" y2="6"/><line x1="10" y1="12" x2="21" y2="12"/><line x1="10" y1="18" x2="21" y2="18"/><text x="3" y="8" font-size="8" fill="currentColor" font-weight="600" stroke="none">1</text><text x="3" y="14" font-size="8" fill="currentColor" font-weight="600" stroke="none">2</text><text x="3" y="20" font-size="8" fill="currentColor" font-weight="600" stroke="none">3</text></svg>
         </button>
-        <!-- Checklist -->
-        <button class="tool-btn" onclick="insertBlock('- [ ] Task')" title="Checklist">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-            <rect x="3" y="5" width="6" height="6" rx="1"/><path d="M4.5 8l1.5 1.5L8 7"/>
-            <line x1="12" y1="8" x2="21" y2="8"/>
-            <rect x="3" y="14" width="6" height="6" rx="1"/>
-            <line x1="12" y1="17" x2="21" y2="17"/>
-          </svg>
+        <button class="tool-btn" onclick="insertAtCursor('- [ ] ')" title="Checklist">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="5" width="6" height="6" rx="1"/><path d="M4.5 8l1.5 1.5L8 7"/><line x1="12" y1="8" x2="21" y2="8"/><rect x="3" y="14" width="6" height="6" rx="1"/><line x1="12" y1="17" x2="21" y2="17"/></svg>
         </button>
 
         <div class="divider"></div>
 
         <!-- Blockquote -->
-        <button class="tool-btn" onclick="insertBlock('> Quote')" title="Blockquote">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-            <path d="M3 21c3 0 7-1 7-8V5c0-1.25-.756-2.017-2-2H4c-1.25 0-2 .75-2 1.972V11c0 1.25.75 2 2 2 1 0 1 0 1 1v1c0 1-1 2-2 2s-1 .008-1 1.031V21z"/>
-            <path d="M15 21c3 0 7-1 7-8V5c0-1.25-.757-2.017-2-2h-4c-1.25 0-2 .75-2 1.972V11c0 1.25.75 2 2 2h.75c0 2.25.25 4-2.75 4v3z"/>
-          </svg>
+        <button class="tool-btn" onclick="insertAtCursor('> ')" title="Blockquote">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 21c3 0 7-1 7-8V5c0-1.25-.756-2.017-2-2H4c-1.25 0-2 .75-2 1.972V11c0 1.25.75 2 2 2 1 0 1 0 1 1v1c0 1-1 2-2 2s-1 .008-1 1.031V21z"/><path d="M15 21c3 0 7-1 7-8V5c0-1.25-.757-2.017-2-2h-4c-1.25 0-2 .75-2 1.972V11c0 1.25.75 2 2 2h.75c0 2.25.25 4-2.75 4v3z"/></svg>
         </button>
         <!-- Code block -->
-        <button class="tool-btn" onclick="insertBlock('\`\`\`\n\n\`\`\`')" title="Code Block">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-            <rect x="3" y="3" width="18" height="18" rx="2"/>
-            <polyline points="9 8 5 12 9 16"/><polyline points="15 8 19 12 15 16"/>
-          </svg>
+        <button class="tool-btn" onclick="insertCodeBlock()" title="Code Block">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><polyline points="9 8 5 12 9 16"/><polyline points="15 8 19 12 15 16"/></svg>
         </button>
         <!-- Table -->
-        <button class="tool-btn" onclick="insertBlock('| Header | Header |\n| --- | --- |\n| Cell | Cell |')" title="Table">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-            <rect x="3" y="3" width="18" height="18" rx="2"/><line x1="3" y1="9" x2="21" y2="9"/><line x1="3" y1="15" x2="21" y2="15"/><line x1="12" y1="3" x2="12" y2="21"/>
-          </svg>
+        <button class="tool-btn" onclick="insertTable()" title="Table">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><line x1="3" y1="9" x2="21" y2="9"/><line x1="3" y1="15" x2="21" y2="15"/><line x1="12" y1="3" x2="12" y2="21"/></svg>
         </button>
-        <!-- Horizontal rule -->
-        <button class="tool-btn" onclick="insertBlock('---')" title="Horizontal Rule">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-            <line x1="2" y1="12" x2="22" y2="12"/>
-          </svg>
+        <!-- HR -->
+        <button class="tool-btn" onclick="insertAtCursor('---')" title="Horizontal Rule">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="2" y1="12" x2="22" y2="12"/></svg>
         </button>
         <!-- Link -->
         <button class="tool-btn" onclick="insertLink()" title="Link (Ctrl+K)">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-            <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/>
-            <path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/>
-          </svg>
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg>
         </button>
 
         <div class="divider"></div>
 
         <!-- Export -->
         <button class="tool-btn" onclick="exportMd()" title="Download .md">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/>
-          </svg>
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
         </button>
         <!-- Share -->
         <button class="tool-btn" onclick="shareDoc()" title="Copy Share Link">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-            <circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/>
-            <line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/>
-          </svg>
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/></svg>
         </button>
         <!-- Clear -->
         <button class="tool-btn" onclick="clearDoc()" title="Clear Document">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-            <polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/>
-          </svg>
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
         </button>
       </div>
     </div>
     
-    <!-- Right: placeholder for symmetry -->
     <div style="width:36px;pointer-events:auto"></div>
   </header>
 
@@ -384,7 +361,7 @@
     <div id="editor"></div>
     <div id="emptyState">
       <h2>Start writing</h2>
-      <p>Click anywhere or press <kbd>Enter</kbd> to begin.<br>Your document is stored in the URL - just share the link.</p>
+      <p>Click anywhere to begin. Your document is stored in the URL.<br>Just share the link.</p>
     </div>
   </main>
 
@@ -397,130 +374,158 @@
 
   <script>
     // ========== State ==========
-    let blocks = []; // Array of { id, markdown, collapsed }
-    let editingBlockId = null;
+    let lines = []; // Array of raw markdown strings, one per line
+    let editingLine = -1; // Index of the line currently being edited
+    let collapsedHeadings = new Set(); // Set of line indices that are collapsed
     let undoStack = [];
     let redoStack = [];
-    let blockIdCounter = 0;
-    const MAX_UNDO = 50;
+    const MAX_UNDO = 100;
 
-    // ========== Marked config ==========
-    marked.setOptions({
-      gfm: true,
-      breaks: true,
-    });
+    // ========== Markdown rendering for single lines ==========
+    marked.setOptions({ gfm: true, breaks: false });
 
-    // Custom renderer for checkboxes
-    const renderer = new marked.Renderer();
-    const origListItem = renderer.listitem;
-    renderer.listitem = function(text, task, checked) {
-      // Handle both marked v4+ object format and v3 args
-      let t, isTask, isChecked;
-      if (typeof text === 'object' && text !== null) {
-        t = text.text || text.tokens?.map(tok => tok.raw || tok.text).join('') || String(text);
-        isTask = text.task;
-        isChecked = text.checked;
-      } else {
-        t = text;
-        isTask = task;
-        isChecked = checked;
-      }
-      if (isTask) {
-        const cls = isChecked ? 'task-list-item checked' : 'task-list-item';
-        const check = isChecked 
-          ? '<input type="checkbox" checked disabled>' 
-          : '<input type="checkbox" disabled>';
-        // Remove the default checkbox that marked inserts
-        const cleanText = t.replace(/^<input[^>]*>\s*/, '');
-        return `<li class="${cls}">${check}${cleanText}</li>\n`;
-      }
-      return `<li>${t}</li>\n`;
-    };
-
-    function renderMarkdown(md) {
-      return marked.parse(md, { renderer });
+    function renderInline(text) {
+      // Use marked's lexer for inline rendering
+      return marked.parseInline(text);
     }
 
-    // ========== Block management ==========
-    function newBlock(markdown = '', collapsed = false) {
-      return { id: ++blockIdCounter, markdown, collapsed };
+    function classifyLine(text) {
+      if (/^#{1,6}\s/.test(text)) return 'heading';
+      if (/^```/.test(text)) return 'codefence';
+      if (/^>\s?/.test(text)) return 'blockquote';
+      if (/^[-*+]\s\[[ x]\]\s/.test(text)) return 'checklist';
+      if (/^[-*+]\s/.test(text)) return 'bullet';
+      if (/^\d+\.\s/.test(text)) return 'numbered';
+      if (/^(\s{2,}|\t)[-*+]\s/.test(text)) return 'bullet-indent';
+      if (/^(\s{2,}|\t)\d+\.\s/.test(text)) return 'numbered-indent';
+      if (/^(\s{2,}|\t)[-*+]\s\[[ x]\]\s/.test(text)) return 'checklist-indent';
+      if (/^(-{3,}|\*{3,}|_{3,})\s*$/.test(text.trim())) return 'hr';
+      if (/^\|/.test(text)) return 'table';
+      if (text.trim() === '') return 'empty';
+      // Indented content (sub-items in lists)
+      if (/^(\s{2,}|\t)/.test(text)) return 'indented';
+      return 'paragraph';
     }
 
-    function parseDocToBlocks(doc) {
-      if (!doc.trim()) return [];
-      const lines = doc.split('\n');
-      const result = [];
-      let current = [];
-      let inCodeBlock = false;
+    function getIndentLevel(text) {
+      const match = text.match(/^(\s*)/);
+      if (!match) return 0;
+      return Math.floor(match[1].length / 2);
+    }
 
+    function getHeadingLevel(text) {
+      const m = text.match(/^(#{1,6})\s/);
+      return m ? m[1].length : 0;
+    }
+
+    function renderLinePreview(text, idx) {
+      const type = classifyLine(text);
+      
+      switch (type) {
+        case 'heading': {
+          const level = getHeadingLevel(text);
+          const content = text.replace(/^#{1,6}\s+/, '');
+          return `<h${level}>${renderInline(content)}</h${level}>`;
+        }
+        case 'hr':
+          return '<hr>';
+        case 'blockquote': {
+          const content = text.replace(/^>\s?/, '');
+          return `<blockquote><p>${renderInline(content)}</p></blockquote>`;
+        }
+        case 'checklist':
+        case 'checklist-indent': {
+          const stripped = text.trimStart();
+          const checked = /^[-*+]\s\[x\]\s/.test(stripped);
+          const content = stripped.replace(/^[-*+]\s\[[ x]\]\s/, '');
+          const indent = getIndentLevel(text);
+          const cls = checked ? 'task-checked' : '';
+          const chk = checked 
+            ? '<input type="checkbox" checked data-line="' + idx + '">' 
+            : '<input type="checkbox" data-line="' + idx + '">';
+          return `<div class="list-indent${indent > 0 ? '-' + Math.min(indent, 3) : ''}" style="padding-left:${indent > 0 ? indent * 1.5 : 0}em">${chk}<span class="${cls}">${renderInline(content)}</span></div>`;
+        }
+        case 'bullet':
+        case 'bullet-indent': {
+          const stripped = text.trimStart();
+          const content = stripped.replace(/^[-*+]\s/, '');
+          const indent = getIndentLevel(text);
+          return `<div style="padding-left:${indent * 1.5}em"><span style="color:#565f89;margin-right:6px">•</span>${renderInline(content)}</div>`;
+        }
+        case 'numbered':
+        case 'numbered-indent': {
+          const stripped = text.trimStart();
+          const match = stripped.match(/^(\d+)\.\s(.*)/);
+          const num = match ? match[1] : '1';
+          const content = match ? match[2] : stripped;
+          const indent = getIndentLevel(text);
+          return `<div style="padding-left:${indent * 1.5}em"><span style="color:#565f89;margin-right:6px">${num}.</span>${renderInline(content)}</div>`;
+        }
+        case 'empty':
+          return '<br>';
+        case 'indented': {
+          // Could be a continuation of a list or just indented text
+          const content = text.trimStart();
+          const indent = getIndentLevel(text);
+          return `<div style="padding-left:${indent * 1.5}em">${renderInline(content)}</div>`;
+        }
+        case 'paragraph':
+        default:
+          return `<p>${renderInline(text)}</p>`;
+      }
+    }
+
+    // ========== Code block & Table detection ==========
+    // These span multiple lines, so we need to identify ranges
+    function getCodeBlockRanges() {
+      const ranges = [];
+      let start = -1;
       for (let i = 0; i < lines.length; i++) {
-        const line = lines[i];
-        
-        // Track code fences
-        if (line.trim().startsWith('```')) {
-          if (inCodeBlock) {
-            current.push(line);
-            result.push(newBlock(current.join('\n')));
-            current = [];
-            inCodeBlock = false;
-            continue;
-          } else {
-            if (current.length) {
-              result.push(newBlock(current.join('\n')));
-              current = [];
-            }
-            current.push(line);
-            inCodeBlock = true;
-            continue;
-          }
+        if (/^```/.test(lines[i])) {
+          if (start === -1) { start = i; }
+          else { ranges.push([start, i]); start = -1; }
         }
-
-        if (inCodeBlock) {
-          current.push(line);
-          continue;
-        }
-
-        // Heading = new block
-        if (/^#{1,6}\s/.test(line)) {
-          if (current.length) {
-            result.push(newBlock(current.join('\n')));
-            current = [];
-          }
-          result.push(newBlock(line));
-          continue;
-        }
-
-        // HR = new block
-        if (/^(-{3,}|\*{3,}|_{3,})\s*$/.test(line.trim())) {
-          if (current.length) {
-            result.push(newBlock(current.join('\n')));
-            current = [];
-          }
-          result.push(newBlock(line));
-          continue;
-        }
-
-        // Empty line: end current block
-        if (line.trim() === '') {
-          if (current.length) {
-            result.push(newBlock(current.join('\n')));
-            current = [];
-          }
-          continue;
-        }
-
-        current.push(line);
       }
-
-      if (current.length) {
-        result.push(newBlock(current.join('\n')));
-      }
-
-      return result;
+      // Unclosed code block
+      if (start !== -1) ranges.push([start, lines.length - 1]);
+      return ranges;
     }
 
-    function getFullMarkdown() {
-      return blocks.map(b => b.markdown).join('\n\n');
+    function getTableRanges() {
+      const ranges = [];
+      let start = -1;
+      for (let i = 0; i < lines.length; i++) {
+        if (/^\|/.test(lines[i])) {
+          if (start === -1) start = i;
+        } else {
+          if (start !== -1) { ranges.push([start, i - 1]); start = -1; }
+        }
+      }
+      if (start !== -1) ranges.push([start, lines.length - 1]);
+      return ranges;
+    }
+
+    function isInRange(idx, ranges) {
+      for (const [s, e] of ranges) {
+        if (idx >= s && idx <= e) return { start: s, end: e };
+      }
+      return null;
+    }
+
+    // ========== Collapsed heading logic ==========
+    function getHiddenLines() {
+      const hidden = new Set();
+      for (const headIdx of collapsedHeadings) {
+        if (headIdx >= lines.length) continue;
+        const level = getHeadingLevel(lines[headIdx]);
+        if (level === 0) continue;
+        for (let j = headIdx + 1; j < lines.length; j++) {
+          const jLevel = getHeadingLevel(lines[j]);
+          if (jLevel > 0 && jLevel <= level) break;
+          hidden.add(j);
+        }
+      }
+      return hidden;
     }
 
     // ========== Rendering ==========
@@ -528,212 +533,503 @@
       const editor = document.getElementById('editor');
       const emptyState = document.getElementById('emptyState');
 
-      if (blocks.length === 0) {
+      if (lines.length === 0) {
         editor.innerHTML = '';
         emptyState.style.display = 'block';
         return;
       }
-
       emptyState.style.display = 'none';
 
-      // Determine heading hierarchy for collapse
-      const headingLevels = blocks.map(b => {
-        const m = b.markdown.match(/^(#{1,6})\s/);
-        return m ? m[1].length : 0;
-      });
-
-      // Determine which blocks are hidden due to collapse
-      const hidden = new Set();
-      for (let i = 0; i < blocks.length; i++) {
-        if (headingLevels[i] > 0 && blocks[i].collapsed) {
-          const level = headingLevels[i];
-          for (let j = i + 1; j < blocks.length; j++) {
-            if (headingLevels[j] > 0 && headingLevels[j] <= level) break;
-            hidden.add(blocks[j].id);
-          }
-        }
-      }
+      const codeRanges = getCodeBlockRanges();
+      const tableRanges = getTableRanges();
+      const hiddenLines = getHiddenLines();
 
       let html = '';
-      for (let i = 0; i < blocks.length; i++) {
-        const b = blocks[i];
-        if (hidden.has(b.id)) continue;
+      let i = 0;
+      while (i < lines.length) {
+        if (hiddenLines.has(i)) { i++; continue; }
 
-        const isEditing = b.id === editingBlockId;
-        const isHeading = headingLevels[i] > 0;
+        // Check if this is part of a table range
+        const tableRange = isInRange(i, tableRanges);
+        if (tableRange && editingLine < tableRange.start || editingLine > tableRange.end ? tableRange : null) {
+          // Check if we're editing any line in this table
+          const editingInTable = editingLine >= tableRange.start && editingLine <= tableRange.end;
+          if (!editingInTable) {
+            // Render entire table as one unit
+            const tableLines = lines.slice(tableRange.start, tableRange.end + 1);
+            const tableMd = tableLines.join('\n');
+            const tableHtml = marked.parse(tableMd);
+            html += `<div class="table-group line" data-line="${tableRange.start}" data-table-end="${tableRange.end}" onclick="startEditLine(${tableRange.start}, event)">`;
+            html += `<div class="line-preview">${tableHtml}</div>`;
+            html += `</div>`;
+            i = tableRange.end + 1;
+            continue;
+          }
+        }
 
-        html += `<div class="block ${isEditing ? 'editing' : ''}" data-id="${b.id}" onclick="startEdit(${b.id}, event)">`;
+        // Check if this is part of a code block range
+        const codeRange = isInRange(i, codeRanges);
+        if (codeRange) {
+          const editingInCode = editingLine >= codeRange.start && editingLine <= codeRange.end;
+          if (!editingInCode) {
+            // Render code block as a group
+            const codeLines = lines.slice(codeRange.start, codeRange.end + 1);
+            const lang = (lines[codeRange.start].match(/^```(\w*)/) || [])[1] || '';
+            const codeContent = codeLines.slice(1, -1).join('\n');
+            html += `<div class="line" data-line="${codeRange.start}" data-code-end="${codeRange.end}" onclick="startEditLine(${codeRange.start}, event)">`;
+            html += `<div class="line-preview"><pre><code>${escapeHtml(codeContent)}</code></pre></div>`;
+            html += `</div>`;
+            i = codeRange.end + 1;
+            continue;
+          }
+        }
+
+        // Single line rendering
+        const line = lines[i];
+        const isEditing = i === editingLine;
+        const isHeading = getHeadingLevel(line) > 0;
+        const isEmpty = line.trim() === '';
+
+        html += `<div class="line ${isEditing ? 'editing' : ''} ${isEmpty ? 'empty-line' : ''}" data-line="${i}" onclick="startEditLine(${i}, event)">`;
 
         // Collapse toggle for headings
         if (isHeading) {
-          const arrow = b.collapsed ? '▸' : '▾';
-          html += `<button class="collapse-toggle" onclick="toggleCollapse(${b.id}, event)" title="Collapse">${arrow}</button>`;
+          const arrow = collapsedHeadings.has(i) ? '▸' : '▾';
+          html += `<button class="collapse-toggle" onclick="toggleCollapse(${i}, event)" title="Collapse">${arrow}</button>`;
         }
 
         if (isEditing) {
-          html += `<div class="block-edit"><textarea id="editArea" onblur="finishEdit()" oninput="autoResize(this)">${escapeHtml(b.markdown)}</textarea></div>`;
+          html += `<input class="line-edit" id="lineInput" value="${escapeAttr(line)}" data-line="${i}" />`;
         } else {
-          const rendered = renderMarkdown(b.markdown);
-          html += `<div class="block-preview">${rendered}</div>`;
+          html += `<div class="line-preview">${renderLinePreview(line, i)}</div>`;
         }
 
         html += `</div>`;
+        i++;
       }
 
       editor.innerHTML = html;
 
-      // Focus textarea if editing
-      if (editingBlockId) {
-        const ta = document.getElementById('editArea');
-        if (ta) {
-          ta.focus();
-          autoResize(ta);
-          // Put cursor at end
-          ta.selectionStart = ta.selectionEnd = ta.value.length;
-        }
-      }
-    }
-
-    function escapeHtml(str) {
-      return str.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
-    }
-
-    function autoResize(ta) {
-      ta.style.height = 'auto';
-      ta.style.height = ta.scrollHeight + 'px';
-    }
-
-    // ========== Editing ==========
-    function startEdit(id, e) {
-      if (e && (e.target.closest('.collapse-toggle') || e.target.tagName === 'A' || e.target.tagName === 'INPUT')) return;
-      if (editingBlockId === id) return;
-      if (editingBlockId !== null) finishEdit();
-      editingBlockId = id;
-      render();
-    }
-
-    function finishEdit() {
-      if (editingBlockId === null) return;
-      const ta = document.getElementById('editArea');
-      if (ta) {
-        const block = blocks.find(b => b.id === editingBlockId);
-        if (block) {
-          const newMd = ta.value;
-          if (newMd !== block.markdown) {
-            pushUndo();
-            // Check if the edit created multiple blocks (e.g., pasting)
-            if (newMd.includes('\n\n') || /\n#{1,6}\s/.test(newMd)) {
-              // Re-parse this block into multiple blocks
-              const newBlocks = parseDocToBlocks(newMd);
-              const idx = blocks.findIndex(b => b.id === editingBlockId);
-              blocks.splice(idx, 1, ...newBlocks);
-            } else {
-              block.markdown = newMd;
-            }
-            // Remove empty blocks
-            blocks = blocks.filter(b => b.markdown.trim() !== '');
-            saveToUrl();
+      // Focus input if editing
+      if (editingLine >= 0) {
+        const input = document.getElementById('lineInput');
+        if (input) {
+          input.focus();
+          // Preserve cursor position if we have it
+          if (typeof cursorPos === 'number') {
+            input.setSelectionRange(cursorPos, cursorPos);
+            cursorPos = null;
+          } else {
+            input.setSelectionRange(input.value.length, input.value.length);
           }
         }
       }
-      editingBlockId = null;
+    }
+
+    function escapeHtml(s) {
+      return s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+    }
+    function escapeAttr(s) {
+      return s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+    }
+
+    // ========== Editing ==========
+    let cursorPos = null;
+
+    function startEditLine(idx, e) {
+      if (e && (e.target.closest('.collapse-toggle') || e.target.tagName === 'A')) return;
+      if (e && e.target.type === 'checkbox') return;
+      if (editingLine === idx) return;
+
+      // Commit current edit first
+      commitEdit();
+      editingLine = idx;
+      cursorPos = null;
       render();
     }
 
-    function toggleCollapse(id, e) {
+    function commitEdit() {
+      if (editingLine < 0) return;
+      const input = document.getElementById('lineInput');
+      if (input && input.value !== lines[editingLine]) {
+        pushUndo();
+        lines[editingLine] = input.value;
+        saveToUrl();
+      }
+      editingLine = -1;
+    }
+
+    function toggleCollapse(idx, e) {
       e.stopPropagation();
-      const block = blocks.find(b => b.id === id);
-      if (block) {
-        block.collapsed = !block.collapsed;
+      if (collapsedHeadings.has(idx)) {
+        collapsedHeadings.delete(idx);
+      } else {
+        collapsedHeadings.add(idx);
+      }
+      render();
+    }
+
+    // ========== Input handling ==========
+    document.addEventListener('keydown', e => {
+      const input = document.getElementById('lineInput');
+
+      // Global shortcuts
+      if ((e.ctrlKey || e.metaKey) && e.key === 'b') { e.preventDefault(); wrapSelection('**'); return; }
+      if ((e.ctrlKey || e.metaKey) && e.key === 'i') { e.preventDefault(); wrapSelection('*'); return; }
+      if ((e.ctrlKey || e.metaKey) && e.key === 'k') { e.preventDefault(); insertLink(); return; }
+      if ((e.ctrlKey || e.metaKey) && e.key === 'z' && !e.shiftKey && !input) { e.preventDefault(); doUndo(); return; }
+      if ((e.ctrlKey || e.metaKey) && e.key === 'z' && e.shiftKey && !input) { e.preventDefault(); doRedo(); return; }
+
+      if (!input) {
+        // Not editing - click to start
+        if (e.key === 'Enter' && lines.length === 0) {
+          e.preventDefault();
+          lines.push('');
+          editingLine = 0;
+          saveToUrl();
+          render();
+        }
+        return;
+      }
+
+      const idx = editingLine;
+
+      // Enter - commit and create new line below
+      if (e.key === 'Enter' && !e.shiftKey && !e.ctrlKey && !e.metaKey) {
+        e.preventDefault();
+        pushUndo();
+        
+        const val = input.value;
+        const pos = input.selectionStart;
+        const before = val.substring(0, pos);
+        const after = val.substring(pos);
+        
+        // Determine prefix for new line (list continuation)
+        let prefix = '';
+        const bulletMatch = val.match(/^(\s*)([-*+])\s/);
+        const numMatch = val.match(/^(\s*)(\d+)\.\s/);
+        const checkMatch = val.match(/^(\s*)[-*+]\s\[[ x]\]\s/);
+        
+        if (checkMatch) {
+          if (val.trim() === '- [ ]' || val.trim() === '- [x]') {
+            // Empty checklist - clear the line
+            lines[idx] = '';
+            editingLine = idx;
+            cursorPos = 0;
+            saveToUrl();
+            render();
+            return;
+          }
+          prefix = checkMatch[1] + '- [ ] ';
+        } else if (bulletMatch) {
+          if (val.trim().match(/^[-*+]$/)) {
+            lines[idx] = '';
+            editingLine = idx;
+            cursorPos = 0;
+            saveToUrl();
+            render();
+            return;
+          }
+          prefix = bulletMatch[1] + bulletMatch[2] + ' ';
+        } else if (numMatch) {
+          if (val.trim().match(/^\d+\.$/)) {
+            lines[idx] = '';
+            editingLine = idx;
+            cursorPos = 0;
+            saveToUrl();
+            render();
+            return;
+          }
+          prefix = numMatch[1] + (parseInt(numMatch[2]) + 1) + '. ';
+        }
+
+        lines[idx] = before;
+        lines.splice(idx + 1, 0, prefix + after);
+        editingLine = idx + 1;
+        cursorPos = prefix.length;
+        saveToUrl();
+        render();
+        return;
+      }
+
+      // Backspace at start of line - merge with previous
+      if (e.key === 'Backspace' && input.selectionStart === 0 && input.selectionEnd === 0 && idx > 0) {
+        e.preventDefault();
+        pushUndo();
+        const prevLen = lines[idx - 1].length;
+        lines[idx - 1] += lines[idx];
+        lines.splice(idx, 1);
+        // Adjust collapsed headings
+        const newCollapsed = new Set();
+        for (const h of collapsedHeadings) {
+          if (h < idx) newCollapsed.add(h);
+          else if (h > idx) newCollapsed.add(h - 1);
+        }
+        collapsedHeadings = newCollapsed;
+        editingLine = idx - 1;
+        cursorPos = prevLen;
+        saveToUrl();
+        render();
+        return;
+      }
+
+      // Delete at end of line - merge with next
+      if (e.key === 'Delete' && input.selectionStart === input.value.length && idx < lines.length - 1) {
+        e.preventDefault();
+        pushUndo();
+        lines[idx] += lines[idx + 1];
+        lines.splice(idx + 1, 1);
+        cursorPos = input.selectionStart;
+        saveToUrl();
+        render();
+        return;
+      }
+
+      // Arrow Up - move to previous line
+      if (e.key === 'ArrowUp' && idx > 0) {
+        e.preventDefault();
+        commitEdit();
+        editingLine = idx - 1;
+        // Skip hidden lines
+        const hidden = getHiddenLines();
+        while (editingLine > 0 && hidden.has(editingLine)) editingLine--;
+        cursorPos = Math.min(input.selectionStart, lines[editingLine].length);
+        render();
+        return;
+      }
+
+      // Arrow Down - move to next line
+      if (e.key === 'ArrowDown' && idx < lines.length - 1) {
+        e.preventDefault();
+        commitEdit();
+        editingLine = idx + 1;
+        const hidden = getHiddenLines();
+        while (editingLine < lines.length - 1 && hidden.has(editingLine)) editingLine++;
+        cursorPos = Math.min(input.selectionStart, lines[editingLine].length);
+        render();
+        return;
+      }
+
+      // Escape - stop editing
+      if (e.key === 'Escape') {
+        e.preventDefault();
+        commitEdit();
+        editingLine = -1;
+        render();
+        return;
+      }
+
+      // Tab - indent/outdent
+      if (e.key === 'Tab') {
+        e.preventDefault();
+        pushUndo();
+        if (e.shiftKey) {
+          if (lines[idx].startsWith('  ')) {
+            lines[idx] = lines[idx].substring(2);
+            cursorPos = Math.max(0, input.selectionStart - 2);
+          }
+        } else {
+          lines[idx] = '  ' + lines[idx];
+          cursorPos = input.selectionStart + 2;
+        }
+        input.value = lines[idx];
+        if (cursorPos !== null) input.setSelectionRange(cursorPos, cursorPos);
+        cursorPos = null;
+        return;
+      }
+
+      // Ctrl+Z / Ctrl+Shift+Z in input
+      if ((e.ctrlKey || e.metaKey) && e.key === 'z') {
+        e.preventDefault();
+        if (e.shiftKey) doRedo(); else doUndo();
+        return;
+      }
+    });
+
+    // Live update as user types (for URL sync)
+    document.addEventListener('input', e => {
+      if (e.target.id === 'lineInput' && editingLine >= 0) {
+        lines[editingLine] = e.target.value;
+        // Don't re-render on every keystroke - just update the data
+        // We'll save on commit
+      }
+    });
+
+    // Click outside to stop editing
+    document.getElementById('main').addEventListener('mousedown', e => {
+      if (!e.target.closest('.line') && editingLine >= 0) {
+        commitEdit();
+        render();
+      }
+      // Click below content to add new line
+      if (!e.target.closest('.line') && !e.target.closest('#emptyState')) {
+        const editor = document.getElementById('editor');
+        const rect = editor.getBoundingClientRect();
+        if (e.clientY > rect.top + rect.height - 60 || lines.length === 0) {
+          pushUndo();
+          lines.push('');
+          editingLine = lines.length - 1;
+          cursorPos = 0;
+          saveToUrl();
+          render();
+        }
+      }
+    });
+
+    // Empty state click
+    document.getElementById('emptyState').addEventListener('click', () => {
+      lines.push('');
+      editingLine = 0;
+      render();
+    });
+
+    // Checkbox toggle
+    document.getElementById('editor').addEventListener('click', e => {
+      if (e.target.type === 'checkbox') {
+        e.stopPropagation();
+        e.preventDefault();
+        const lineIdx = parseInt(e.target.dataset.line);
+        if (isNaN(lineIdx) || lineIdx >= lines.length) return;
+        pushUndo();
+        const line = lines[lineIdx];
+        if (/\[x\]/.test(line)) {
+          lines[lineIdx] = line.replace('[x]', '[ ]');
+        } else {
+          lines[lineIdx] = line.replace('[ ]', '[x]');
+        }
+        saveToUrl();
+        render();
+      }
+    });
+
+    // ========== Toolbar actions ==========
+    function insertAtCursor(prefix) {
+      const input = document.getElementById('lineInput');
+      if (input && editingLine >= 0) {
+        pushUndo();
+        const pos = input.selectionStart;
+        // If line is empty, just set prefix
+        if (input.value.trim() === '') {
+          lines[editingLine] = prefix;
+          cursorPos = prefix.length;
+        } else {
+          // Prepend prefix to line
+          lines[editingLine] = prefix + input.value;
+          cursorPos = pos + prefix.length;
+        }
+        saveToUrl();
+        render();
+      } else {
+        // No active line - create new
+        pushUndo();
+        lines.push(prefix);
+        editingLine = lines.length - 1;
+        cursorPos = prefix.length;
+        saveToUrl();
         render();
       }
     }
 
-    // ========== Toolbar actions ==========
-    function insertBlock(md) {
-      pushUndo();
-      if (editingBlockId !== null) {
-        finishEdit();
+    function wrapSelection(wrapper) {
+      const input = document.getElementById('lineInput');
+      if (!input) {
+        pushUndo();
+        lines.push(wrapper + 'text' + wrapper);
+        editingLine = lines.length - 1;
+        cursorPos = wrapper.length;
+        saveToUrl();
+        render();
+        return;
       }
-      blocks.push(newBlock(md));
-      editingBlockId = blocks[blocks.length - 1].id;
+      const start = input.selectionStart;
+      const end = input.selectionEnd;
+      const text = input.value;
+      const selected = text.substring(start, end) || 'text';
+      pushUndo();
+      const newVal = text.substring(0, start) + wrapper + selected + wrapper + text.substring(end);
+      lines[editingLine] = newVal;
+      input.value = newVal;
+      input.setSelectionRange(start + wrapper.length, start + wrapper.length + selected.length);
+      input.focus();
+    }
+
+    function insertLink() {
+      const url = prompt('Enter URL:');
+      if (!url) return;
+      const input = document.getElementById('lineInput');
+      if (!input) {
+        pushUndo();
+        lines.push(`[Link](${url})`);
+        editingLine = lines.length - 1;
+        saveToUrl();
+        render();
+        return;
+      }
+      const start = input.selectionStart;
+      const end = input.selectionEnd;
+      const text = input.value;
+      const selected = text.substring(start, end) || 'Link';
+      pushUndo();
+      const newVal = text.substring(0, start) + `[${selected}](${url})` + text.substring(end);
+      lines[editingLine] = newVal;
+      input.value = newVal;
+      input.focus();
+    }
+
+    function insertCodeBlock() {
+      pushUndo();
+      const idx = editingLine >= 0 ? editingLine + 1 : lines.length;
+      commitEdit();
+      lines.splice(idx, 0, '```', '', '```');
+      editingLine = idx + 1;
+      cursorPos = 0;
       saveToUrl();
       render();
     }
 
-    function wrapSelection(wrapper) {
-      const ta = document.getElementById('editArea');
-      if (!ta) {
-        // No active editing block, insert new block
-        insertBlock(wrapper + 'text' + wrapper);
-        return;
-      }
-      const start = ta.selectionStart;
-      const end = ta.selectionEnd;
-      const text = ta.value;
-      const selected = text.substring(start, end) || 'text';
-      const newText = text.substring(0, start) + wrapper + selected + wrapper + text.substring(end);
-      
+    function insertTable() {
       pushUndo();
-      const block = blocks.find(b => b.id === editingBlockId);
-      if (block) block.markdown = newText;
-      ta.value = newText;
-      ta.selectionStart = start + wrapper.length;
-      ta.selectionEnd = start + wrapper.length + selected.length;
-      ta.focus();
-    }
-
-    function insertLink() {
-      const ta = document.getElementById('editArea');
-      const url = prompt('Enter URL:');
-      if (!url) return;
-      if (!ta) {
-        insertBlock(`[Link](${url})`);
-        return;
-      }
-      const start = ta.selectionStart;
-      const end = ta.selectionEnd;
-      const text = ta.value;
-      const selected = text.substring(start, end) || 'Link';
-      const newText = text.substring(0, start) + `[${selected}](${url})` + text.substring(end);
-      
-      pushUndo();
-      const block = blocks.find(b => b.id === editingBlockId);
-      if (block) block.markdown = newText;
-      ta.value = newText;
-      ta.focus();
+      const idx = editingLine >= 0 ? editingLine + 1 : lines.length;
+      commitEdit();
+      lines.splice(idx, 0, '| Header | Header |', '| --- | --- |', '| Cell | Cell |');
+      editingLine = idx;
+      cursorPos = 2;
+      saveToUrl();
+      render();
     }
 
     // ========== Undo/Redo ==========
     function pushUndo() {
-      undoStack.push(JSON.stringify(blocks.map(b => ({ ...b }))));
+      undoStack.push({ lines: [...lines], editing: editingLine, collapsed: new Set(collapsedHeadings) });
       if (undoStack.length > MAX_UNDO) undoStack.shift();
       redoStack = [];
     }
 
     function doUndo() {
       if (!undoStack.length) return;
-      redoStack.push(JSON.stringify(blocks.map(b => ({ ...b }))));
-      const state = JSON.parse(undoStack.pop());
-      blocks = state;
-      editingBlockId = null;
+      redoStack.push({ lines: [...lines], editing: editingLine, collapsed: new Set(collapsedHeadings) });
+      const state = undoStack.pop();
+      lines = state.lines;
+      editingLine = -1;
+      collapsedHeadings = state.collapsed;
       saveToUrl();
       render();
     }
 
     function doRedo() {
       if (!redoStack.length) return;
-      undoStack.push(JSON.stringify(blocks.map(b => ({ ...b }))));
-      const state = JSON.parse(redoStack.pop());
-      blocks = state;
-      editingBlockId = null;
+      undoStack.push({ lines: [...lines], editing: editingLine, collapsed: new Set(collapsedHeadings) });
+      const state = redoStack.pop();
+      lines = state.lines;
+      editingLine = -1;
+      collapsedHeadings = state.collapsed;
       saveToUrl();
       render();
     }
 
     // ========== URL storage ==========
     function saveToUrl() {
-      const md = getFullMarkdown();
+      const md = lines.join('\n');
       if (!md.trim()) {
         history.replaceState(null, '', location.pathname);
         return;
@@ -751,9 +1047,10 @@
       } catch { return ''; }
     }
 
-    // ========== Export / Share ==========
+    // ========== Export/Share/Clear ==========
     function exportMd() {
-      const md = getFullMarkdown();
+      commitEdit();
+      const md = lines.join('\n');
       const blob = new Blob([md], { type: 'text/markdown' });
       const a = document.createElement('a');
       a.href = URL.createObjectURL(blob);
@@ -762,15 +1059,18 @@
     }
 
     function shareDoc() {
+      commitEdit();
+      saveToUrl();
       navigator.clipboard.writeText(location.href).then(() => showToast('Link copied!'));
     }
 
     function clearDoc() {
-      if (blocks.length === 0) return;
+      if (lines.length === 0) return;
       if (!confirm('Clear the entire document?')) return;
       pushUndo();
-      blocks = [];
-      editingBlockId = null;
+      lines = [];
+      editingLine = -1;
+      collapsedHeadings.clear();
       saveToUrl();
       render();
     }
@@ -797,211 +1097,20 @@
       if (!e.target.closest('.dropdown')) closeDropdowns();
     });
 
-    // ========== Keyboard shortcuts ==========
-    document.addEventListener('keydown', e => {
-      const ta = document.getElementById('editArea');
-
-      // Ctrl/Cmd + B
-      if ((e.ctrlKey || e.metaKey) && e.key === 'b') {
-        e.preventDefault();
-        wrapSelection('**');
-      }
-      // Ctrl/Cmd + I
-      if ((e.ctrlKey || e.metaKey) && e.key === 'i') {
-        e.preventDefault();
-        wrapSelection('*');
-      }
-      // Ctrl/Cmd + K
-      if ((e.ctrlKey || e.metaKey) && e.key === 'k') {
-        e.preventDefault();
-        insertLink();
-      }
-      // Ctrl/Cmd + Z
-      if ((e.ctrlKey || e.metaKey) && e.key === 'z' && !e.shiftKey) {
-        if (ta) return; // Let textarea handle it
-        e.preventDefault();
-        doUndo();
-      }
-      // Ctrl/Cmd + Shift + Z
-      if ((e.ctrlKey || e.metaKey) && e.key === 'z' && e.shiftKey) {
-        if (ta) return;
-        e.preventDefault();
-        doRedo();
-      }
-      // Escape - finish editing
-      if (e.key === 'Escape' && editingBlockId !== null) {
-        e.preventDefault();
-        finishEdit();
-      }
-      // Enter on empty state - create first block
-      if (e.key === 'Enter' && blocks.length === 0 && !ta) {
-        e.preventDefault();
-        blocks.push(newBlock(''));
-        editingBlockId = blocks[0].id;
-        render();
-      }
-      // Tab in editing mode - indent
-      if (e.key === 'Tab' && ta) {
-        e.preventDefault();
-        const start = ta.selectionStart;
-        const end = ta.selectionEnd;
-        if (e.shiftKey) {
-          // Outdent
-          const before = ta.value.substring(0, start);
-          const lineStart = before.lastIndexOf('\n') + 1;
-          const linePrefix = ta.value.substring(lineStart, start);
-          if (linePrefix.startsWith('  ')) {
-            ta.value = ta.value.substring(0, lineStart) + ta.value.substring(lineStart + 2);
-            ta.selectionStart = ta.selectionEnd = start - 2;
-          }
-        } else {
-          ta.value = ta.value.substring(0, start) + '  ' + ta.value.substring(end);
-          ta.selectionStart = ta.selectionEnd = start + 2;
-        }
-        const block = blocks.find(b => b.id === editingBlockId);
-        if (block) block.markdown = ta.value;
-      }
-      // Enter in textarea - handle list continuation
-      if (e.key === 'Enter' && ta && !e.shiftKey && !e.ctrlKey && !e.metaKey) {
-        const pos = ta.selectionStart;
-        const text = ta.value;
-        const lineStart = text.lastIndexOf('\n', pos - 1) + 1;
-        const currentLine = text.substring(lineStart, pos);
-        
-        // Check for list patterns
-        let prefix = '';
-        const bulletMatch = currentLine.match(/^(\s*)([-*+])\s/);
-        const numMatch = currentLine.match(/^(\s*)(\d+)\.\s/);
-        const checkMatch = currentLine.match(/^(\s*)- \[[ x]\]\s/);
-        
-        if (checkMatch) {
-          // Empty checklist item - remove it
-          if (currentLine.trim() === '- [ ]' || currentLine.trim() === '- [x]') {
-            e.preventDefault();
-            ta.value = text.substring(0, lineStart) + text.substring(pos);
-            ta.selectionStart = ta.selectionEnd = lineStart;
-            const block = blocks.find(b => b.id === editingBlockId);
-            if (block) block.markdown = ta.value;
-            autoResize(ta);
-            return;
-          }
-          prefix = checkMatch[1] + '- [ ] ';
-        } else if (bulletMatch) {
-          if (currentLine.trim() === '-' || currentLine.trim() === '*' || currentLine.trim() === '+') {
-            e.preventDefault();
-            ta.value = text.substring(0, lineStart) + text.substring(pos);
-            ta.selectionStart = ta.selectionEnd = lineStart;
-            const block = blocks.find(b => b.id === editingBlockId);
-            if (block) block.markdown = ta.value;
-            autoResize(ta);
-            return;
-          }
-          prefix = bulletMatch[1] + bulletMatch[2] + ' ';
-        } else if (numMatch) {
-          if (currentLine.trim() === numMatch[2] + '.') {
-            e.preventDefault();
-            ta.value = text.substring(0, lineStart) + text.substring(pos);
-            ta.selectionStart = ta.selectionEnd = lineStart;
-            const block = blocks.find(b => b.id === editingBlockId);
-            if (block) block.markdown = ta.value;
-            autoResize(ta);
-            return;
-          }
-          prefix = numMatch[1] + (parseInt(numMatch[2]) + 1) + '. ';
-        }
-
-        if (prefix) {
-          e.preventDefault();
-          ta.value = text.substring(0, pos) + '\n' + prefix + text.substring(pos);
-          ta.selectionStart = ta.selectionEnd = pos + 1 + prefix.length;
-          const block = blocks.find(b => b.id === editingBlockId);
-          if (block) block.markdown = ta.value;
-          autoResize(ta);
-        }
-      }
-    });
-
-    // Click outside editor to finish editing
-    document.getElementById('main').addEventListener('click', e => {
-      if (!e.target.closest('.block') && editingBlockId !== null) {
-        finishEdit();
-      }
-      // Click on empty area below blocks to add new block
-      if (!e.target.closest('.block') && !e.target.closest('#emptyState') && blocks.length > 0) {
-        const editor = document.getElementById('editor');
-        const rect = editor.getBoundingClientRect();
-        if (e.clientY > rect.bottom - 100) {
-          pushUndo();
-          const b = newBlock('');
-          blocks.push(b);
-          editingBlockId = b.id;
-          render();
-        }
-      }
-    });
-
-    // Click empty state
-    document.getElementById('emptyState').addEventListener('click', () => {
-      const b = newBlock('');
-      blocks.push(b);
-      editingBlockId = b.id;
-      render();
-    });
-
-    // Handle checkbox clicks in preview
-    document.getElementById('editor').addEventListener('change', e => {
-      if (e.target.type === 'checkbox') {
-        const blockEl = e.target.closest('.block');
-        if (!blockEl) return;
-        const id = parseInt(blockEl.dataset.id);
-        const block = blocks.find(b => b.id === id);
-        if (!block) return;
-
-        pushUndo();
-        // Find which checkbox this is (nth in the block)
-        const allCheckboxes = blockEl.querySelectorAll('input[type="checkbox"]');
-        let checkIdx = 0;
-        for (let i = 0; i < allCheckboxes.length; i++) {
-          if (allCheckboxes[i] === e.target) { checkIdx = i; break; }
-        }
-
-        // Toggle in markdown
-        let count = 0;
-        block.markdown = block.markdown.replace(/- \[([ x])\]/g, (match, state) => {
-          if (count++ === checkIdx) {
-            return state === 'x' ? '- [ ]' : '- [x]';
-          }
-          return match;
-        });
-
-        saveToUrl();
-        render();
-      }
-    });
-
-    // Enable checkbox clicking
-    document.getElementById('editor').addEventListener('click', e => {
-      if (e.target.type === 'checkbox') {
-        e.stopPropagation(); // Don't trigger block edit
-        e.target.checked = !e.target.checked; // Toggle since we disabled it
-        e.target.dispatchEvent(new Event('change', { bubbles: true }));
-      }
-    });
-
     // ========== Init ==========
     function init() {
       const doc = loadFromUrl();
       if (doc) {
-        blocks = parseDocToBlocks(doc);
+        lines = doc.split('\n');
       }
       render();
     }
 
-    // Handle back/forward
     window.addEventListener('hashchange', () => {
       const doc = loadFromUrl();
-      blocks = doc ? parseDocToBlocks(doc) : [];
-      editingBlockId = null;
+      lines = doc ? doc.split('\n') : [];
+      editingLine = -1;
+      collapsedHeadings.clear();
       render();
     });
 
