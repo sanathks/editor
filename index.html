@@ -177,17 +177,76 @@
       border: 1px solid #414868;
     }
 
-    /* Table styles */
-    .table-group { margin: 0.3em 0; }
-    .table-group table { 
-      border-collapse: collapse; width: 100%;
+    /* Interactive table styles */
+    .table-component { margin: 0.5em 0; position: relative; }
+    .table-component table { 
+      border-collapse: collapse; width: auto; min-width: 200px;
       border: 1px solid #414868;
     }
-    .table-group th { 
-      background: #24283b; padding: 8px 12px; text-align: left; 
+    .table-component th { 
+      background: #24283b; padding: 0; text-align: left; 
       border: 1px solid #414868; font-weight: 600; color: #c0caf5;
+      position: relative; min-width: 80px;
     }
-    .table-group td { padding: 8px 12px; border: 1px solid #414868; }
+    .table-component td { 
+      padding: 0; border: 1px solid #414868; position: relative; min-width: 80px;
+    }
+    .table-component th .cell-display,
+    .table-component td .cell-display {
+      padding: 6px 10px; min-height: 32px; cursor: text;
+      line-height: 1.5;
+    }
+    .table-component th .cell-display:hover,
+    .table-component td .cell-display:hover {
+      background: rgba(122, 162, 247, 0.06);
+    }
+    .table-component .cell-input {
+      width: 100%; padding: 6px 10px; background: rgba(122, 162, 247, 0.08);
+      color: #c0caf5; border: none; outline: none;
+      font-family: 'JetBrains Mono', monospace; font-size: 13px;
+      line-height: 1.5; min-height: 32px;
+    }
+    .table-component .cell-input:focus {
+      background: rgba(122, 162, 247, 0.12);
+      box-shadow: inset 0 0 0 1px #7aa2f7;
+    }
+    /* Add column button */
+    .table-add-col {
+      position: absolute; right: -28px; top: 0;
+      width: 24px; height: 100%; background: none; border: none;
+      color: #565f89; cursor: pointer; font-size: 16px;
+      display: flex; align-items: center; justify-content: center;
+      opacity: 0; transition: opacity 0.15s;
+      border-radius: 0 6px 6px 0;
+    }
+    .table-component:hover .table-add-col { opacity: 1; }
+    .table-add-col:hover { background: rgba(122, 162, 247, 0.15); color: #7aa2f7; }
+    /* Add row button */
+    .table-add-row {
+      width: 100%; height: 24px; background: none; border: 1px dashed #414868;
+      border-top: none; color: #565f89; cursor: pointer; font-size: 14px;
+      display: flex; align-items: center; justify-content: center;
+      opacity: 0; transition: opacity 0.15s; border-radius: 0 0 6px 6px;
+    }
+    .table-component:hover .table-add-row { opacity: 1; }
+    .table-add-row:hover { background: rgba(122, 162, 247, 0.08); color: #7aa2f7; }
+    /* Delete column/row buttons */
+    .col-delete {
+      position: absolute; top: -20px; left: 50%; transform: translateX(-50%);
+      width: 18px; height: 18px; background: #f7768e; border: none; border-radius: 50%;
+      color: #1a1b26; font-size: 10px; cursor: pointer; display: flex;
+      align-items: center; justify-content: center; opacity: 0; transition: opacity 0.15s;
+      z-index: 5;
+    }
+    .table-component:hover .col-delete { opacity: 0; }
+    .table-component th:hover .col-delete { opacity: 1; }
+    .row-delete {
+      position: absolute; left: -22px; top: 50%; transform: translateY(-50%);
+      width: 18px; height: 18px; background: #f7768e; border: none; border-radius: 50%;
+      color: #1a1b26; font-size: 10px; cursor: pointer; display: flex;
+      align-items: center; justify-content: center; opacity: 0; transition: opacity 0.15s;
+    }
+    .table-component:hover tr:hover .row-delete { opacity: 1; }
 
     /* Collapsible headings */
     .collapse-toggle {
@@ -542,21 +601,16 @@
       while (i < lines.length) {
         if (hiddenLines.has(i)) { i++; continue; }
 
-        // Check if this is part of a table range
+        // Check if this is part of a table range - render interactive table
         const tableRange = isInRange(i, tableRanges);
-        if (tableRange) {
-          const editingInTable = editingLine >= tableRange.start && editingLine <= tableRange.end;
-          if (!editingInTable) {
-            // Render entire table as one unit
-            const tableLines = lines.slice(tableRange.start, tableRange.end + 1);
-            const tableMd = tableLines.join('\n');
-            const tableHtml = marked.parse(tableMd);
-            html += `<div class="table-group line" data-line="${tableRange.start}" data-table-end="${tableRange.end}" onclick="startEditLine(${tableRange.start}, event)">`;
-            html += `<div class="line-preview">${tableHtml}</div>`;
-            html += `</div>`;
-            i = tableRange.end + 1;
-            continue;
-          }
+        if (tableRange && i === tableRange.start) {
+          html += renderInteractiveTable(tableRange.start, tableRange.end);
+          i = tableRange.end + 1;
+          continue;
+        } else if (tableRange && i > tableRange.start) {
+          // Skip non-first lines of table (already rendered)
+          i++;
+          continue;
         }
 
         // Check if this is part of a code block range
@@ -626,6 +680,240 @@
       return s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
     }
 
+    // ========== Interactive Table ==========
+    let editingCell = null; // { tableStart, row, col }
+
+    function parseTableLines(start, end) {
+      const tableLines = lines.slice(start, end + 1);
+      const rows = [];
+      let separatorIdx = -1;
+      for (let i = 0; i < tableLines.length; i++) {
+        const cells = tableLines[i].split('|').slice(1, -1).map(c => c.trim());
+        if (cells.length && cells.every(c => /^[-:]+$/.test(c))) {
+          separatorIdx = i;
+          continue;
+        }
+        rows.push({ cells, lineIdx: start + i, isHeader: separatorIdx < 0 });
+      }
+      return rows;
+    }
+
+    function rebuildTableLines(start, end, rows) {
+      // Find column count
+      const colCount = Math.max(...rows.map(r => r.cells.length));
+      const newLines = [];
+      let headerDone = false;
+      for (const row of rows) {
+        // Pad cells
+        while (row.cells.length < colCount) row.cells.push('');
+        newLines.push('| ' + row.cells.join(' | ') + ' |');
+        if (row.isHeader && !headerDone) {
+          newLines.push('| ' + row.cells.map(() => '---').join(' | ') + ' |');
+          headerDone = true;
+        }
+      }
+      // Replace lines
+      lines.splice(start, end - start + 1, ...newLines);
+    }
+
+    function renderInteractiveTable(start, end) {
+      const rows = parseTableLines(start, end);
+      if (rows.length === 0) return '';
+      const colCount = Math.max(...rows.map(r => r.cells.length));
+
+      let h = `<div class="table-component" data-table-start="${start}" data-table-end="${end}">`;
+      h += `<div style="position:relative;display:inline-block">`;
+      h += `<table>`;
+
+      for (let r = 0; r < rows.length; r++) {
+        const row = rows[r];
+        const tag = row.isHeader ? 'th' : 'td';
+        h += `<tr>`;
+        if (!row.isHeader) {
+          h += `<button class="row-delete" onclick="tableDeleteRow(${start},${end},${r},event)" title="Delete row">&times;</button>`;
+        }
+        for (let c = 0; c < colCount; c++) {
+          const cellVal = (row.cells[c] || '').trim();
+          const isEditingThis = editingCell && editingCell.tableStart === start && editingCell.row === r && editingCell.col === c;
+          h += `<${tag} style="position:relative">`;
+          if (row.isHeader && rows.length > 0) {
+            h += `<button class="col-delete" onclick="tableDeleteCol(${start},${end},${c},event)" title="Delete column">&times;</button>`;
+          }
+          if (isEditingThis) {
+            h += `<input class="cell-input" id="cellInput" value="${escapeAttr(cellVal)}" data-table="${start}" data-row="${r}" data-col="${c}" />`;
+          } else {
+            h += `<div class="cell-display" onclick="startCellEdit(${start},${end},${r},${c},event)">${cellVal ? renderInline(cellVal) : '&nbsp;'}</div>`;
+          }
+          h += `</${tag}>`;
+        }
+        h += `</tr>`;
+      }
+
+      h += `</table>`;
+      h += `<button class="table-add-col" onclick="tableAddCol(${start},${end},event)" title="Add column">+</button>`;
+      h += `</div>`;
+      h += `<button class="table-add-row" onclick="tableAddRow(${start},${end},event)" title="Add row">+ Add row</button>`;
+      h += `</div>`;
+      return h;
+    }
+
+    function startCellEdit(tableStart, tableEnd, row, col, e) {
+      e.stopPropagation();
+      commitCellEdit();
+      if (editingLine >= 0) commitEdit();
+      editingLine = -1;
+      editingCell = { tableStart, tableEnd, row, col };
+      render();
+      setTimeout(() => {
+        const inp = document.getElementById('cellInput');
+        if (inp) { inp.focus(); inp.select(); }
+      }, 0);
+    }
+
+    function commitCellEdit() {
+      if (!editingCell) return;
+      const inp = document.getElementById('cellInput');
+      if (!inp) { editingCell = null; return; }
+      
+      const { tableStart, tableEnd, row, col } = editingCell;
+      const rows = parseTableLines(tableStart, tableEnd);
+      if (row < rows.length && col < rows[row].cells.length) {
+        const oldVal = rows[row].cells[col];
+        const newVal = inp.value;
+        if (oldVal !== newVal) {
+          pushUndo();
+          rows[row].cells[col] = newVal;
+          rebuildTableLines(tableStart, tableEnd, rows);
+          saveToUrl();
+        }
+      }
+      editingCell = null;
+    }
+
+    function tableAddRow(start, end, e) {
+      e.stopPropagation();
+      commitCellEdit();
+      pushUndo();
+      const rows = parseTableLines(start, end);
+      const colCount = Math.max(...rows.map(r => r.cells.length));
+      const newRow = '| ' + Array(colCount).fill('  ').join(' | ') + ' |';
+      // Insert after the last table line
+      lines.splice(end + 1, 0, newRow);
+      saveToUrl();
+      // Start editing first cell of new row
+      const newRows = parseTableLines(start, end + 1);
+      editingCell = { tableStart: start, tableEnd: end + 1, row: newRows.length - 1, col: 0 };
+      render();
+      setTimeout(() => {
+        const inp = document.getElementById('cellInput');
+        if (inp) { inp.focus(); inp.select(); }
+      }, 0);
+    }
+
+    function tableAddCol(start, end, e) {
+      e.stopPropagation();
+      commitCellEdit();
+      pushUndo();
+      const rows = parseTableLines(start, end);
+      for (const row of rows) {
+        row.cells.push(row.isHeader ? 'Header' : '');
+      }
+      rebuildTableLines(start, end, rows);
+      saveToUrl();
+      render();
+    }
+
+    function tableDeleteRow(start, end, rowIdx, e) {
+      e.stopPropagation();
+      commitCellEdit();
+      const rows = parseTableLines(start, end);
+      if (rows.length <= 2) return; // Keep at least header + 1 row
+      pushUndo();
+      rows.splice(rowIdx, 1);
+      rebuildTableLines(start, end, rows);
+      saveToUrl();
+      render();
+    }
+
+    function tableDeleteCol(start, end, colIdx, e) {
+      e.stopPropagation();
+      commitCellEdit();
+      const rows = parseTableLines(start, end);
+      const colCount = Math.max(...rows.map(r => r.cells.length));
+      if (colCount <= 1) return; // Keep at least 1 column
+      pushUndo();
+      for (const row of rows) {
+        if (colIdx < row.cells.length) row.cells.splice(colIdx, 1);
+      }
+      rebuildTableLines(start, end, rows);
+      saveToUrl();
+      render();
+    }
+
+    // Cell keyboard navigation
+    document.addEventListener('keydown', e => {
+      const cellInput = document.getElementById('cellInput');
+      if (!cellInput || !editingCell) return;
+
+      if (e.key === 'Tab') {
+        e.preventDefault();
+        commitCellEdit();
+        const { tableStart, tableEnd, row, col } = editingCell || {};
+        if (tableStart == null) return;
+        const rows = parseTableLines(tableStart, tableEnd);
+        const colCount = Math.max(...rows.map(r => r.cells.length));
+        
+        let newRow = row, newCol = col;
+        if (e.shiftKey) {
+          newCol--;
+          if (newCol < 0) { newCol = colCount - 1; newRow--; }
+          if (newRow < 0) { newRow = 0; newCol = 0; }
+        } else {
+          newCol++;
+          if (newCol >= colCount) { newCol = 0; newRow++; }
+          if (newRow >= rows.length) {
+            // Add new row
+            tableAddRow(tableStart, tableEnd, e);
+            return;
+          }
+        }
+        editingCell = { tableStart, tableEnd, row: newRow, col: newCol };
+        render();
+        setTimeout(() => {
+          const inp = document.getElementById('cellInput');
+          if (inp) { inp.focus(); inp.select(); }
+        }, 0);
+        return;
+      }
+
+      if (e.key === 'Enter' && !e.shiftKey) {
+        e.preventDefault();
+        commitCellEdit();
+        const { tableStart, tableEnd, row, col } = editingCell || {};
+        if (tableStart == null) return;
+        const rows = parseTableLines(tableStart, tableEnd);
+        let newRow = row + 1;
+        if (newRow >= rows.length) {
+          tableAddRow(tableStart, tableEnd, e);
+          return;
+        }
+        editingCell = { tableStart, tableEnd, row: newRow, col };
+        render();
+        setTimeout(() => {
+          const inp = document.getElementById('cellInput');
+          if (inp) { inp.focus(); inp.select(); }
+        }, 0);
+        return;
+      }
+
+      if (e.key === 'Escape') {
+        e.preventDefault();
+        editingCell = null;
+        render();
+        return;
+      }
+    });
+
     // ========== Editing ==========
     let cursorPos = null;
 
@@ -664,6 +952,9 @@
 
     // ========== Input handling ==========
     document.addEventListener('keydown', e => {
+      // Skip if editing a table cell (handled by cell keydown)
+      if (document.getElementById('cellInput')) return;
+      
       const input = document.getElementById('lineInput');
 
       // Global shortcuts
@@ -849,11 +1140,13 @@
     });
 
     function handleMainClick(e) {
-      // Don't interfere with toolbar or line clicks
+      // Don't interfere with toolbar, line clicks, or table components
       if (e.target.closest('header')) return;
       if (e.target.closest('.line')) return;
+      if (e.target.closest('.table-component')) return;
       
       // Commit any current edit
+      commitCellEdit();
       if (editingLine >= 0) commitEdit();
       
       // Create a new editable line at the end
@@ -984,13 +1277,18 @@
     function insertTable() {
       const idx = editingLine >= 0 ? editingLine + 1 : lines.length;
       commitEdit();
+      commitCellEdit();
       pushUndo();
-      lines.splice(idx, 0, '| Header | Header |', '| --- | --- |', '| Cell | Cell |');
-      editingLine = idx;
-      cursorPos = 2;
+      lines.splice(idx, 0, '| Header | Header |', '| --- | --- |', '|  |  |');
+      editingLine = -1;
+      // Start editing first data cell
+      editingCell = { tableStart: idx, tableEnd: idx + 2, row: 1, col: 0 };
       saveToUrl();
       render();
-      requestAnimationFrame(() => { const inp = document.getElementById('lineInput'); if (inp) inp.focus(); });
+      setTimeout(() => {
+        const inp = document.getElementById('cellInput');
+        if (inp) { inp.focus(); inp.select(); }
+      }, 0);
     }
 
     // ========== Undo/Redo ==========
