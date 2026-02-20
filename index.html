@@ -722,7 +722,7 @@
       const colCount = Math.max(...rows.map(r => r.cells.length));
 
       let h = `<div class="table-component" data-table-start="${start}" data-table-end="${end}">`;
-      h += `<div style="position:relative;display:inline-block">`;
+      h += `<div style="position:relative">`;
       h += `<table>`;
 
       for (let r = 0; r < rows.length; r++) {
