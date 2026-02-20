@@ -357,7 +357,7 @@
   </header>
 
   <!-- Main scrollable area -->
-  <main id="main" class="flex-1 overflow-y-auto" style="padding-top:0;cursor:text">
+  <main id="main" class="flex-1 overflow-y-auto" onclick="handleMainClick(event)" style="padding-top:0;cursor:text">
     <div id="editor"></div>
   </main>
 
@@ -544,8 +544,7 @@
 
         // Check if this is part of a table range
         const tableRange = isInRange(i, tableRanges);
-        if (tableRange && editingLine < tableRange.start || editingLine > tableRange.end ? tableRange : null) {
-          // Check if we're editing any line in this table
+        if (tableRange) {
           const editingInTable = editingLine >= tableRange.start && editingLine <= tableRange.end;
           if (!editingInTable) {
             // Render entire table as one unit
@@ -848,11 +847,9 @@
       }
     });
 
-    // Click anywhere in main area
-    document.getElementById('main').addEventListener('mousedown', e => {
-      // Don't interfere with toolbar
+    function handleMainClick(e) {
+      // Don't interfere with toolbar or line clicks
       if (e.target.closest('header')) return;
-      // Don't interfere with line clicks (handled by onclick on .line)
       if (e.target.closest('.line')) return;
       
       // Commit any current edit
@@ -863,11 +860,11 @@
       editingLine = lines.length - 1;
       cursorPos = 0;
       render();
-      requestAnimationFrame(() => {
+      setTimeout(() => {
         const inp = document.getElementById('lineInput');
         if (inp) inp.focus();
-      });
-    });
+      }, 0);
+    }
 
     // Checkbox toggle
     document.getElementById('editor').addEventListener('click', e => {
