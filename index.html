@@ -88,7 +88,7 @@
       cursor: text;
     }
     .line:hover {
-      background: rgba(122, 162, 247, 0.03);
+      background: transparent;
     }
     .line.editing {
       background: transparent;
@@ -262,6 +262,7 @@
     /* Editable line */
     .line-editable {
       outline: none;
+      background: transparent;
       font-family: 'JetBrains Mono', monospace;
       font-size: 14px;
       line-height: 1.7;
@@ -271,6 +272,14 @@
       word-wrap: break-word;
       min-height: 1.4em;
       padding: 0 2px;
+      border: none;
+      box-shadow: none;
+    }
+    .line-editable:focus {
+      outline: none;
+      background: transparent;
+      border: none;
+      box-shadow: none;
     }
 
     /* Scrollbar */
