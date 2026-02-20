@@ -1194,16 +1194,26 @@
       // Commit any current edit
       commitCellEdit();
       if (editingLine >= 0) commitEdit();
+      editingLine = -1;
       
-      // Create a new editable line at the end
-      lines.push('');
-      editingLine = lines.length - 1;
-      cursorPos = 0;
+      // Only create a new line if clicking below all content or doc is empty
+      const editor = document.getElementById('editor');
+      const lastBlock = editor.querySelector('.line:last-child, .table-component:last-child');
+      const clickedBelowContent = !lastBlock || e.clientY > lastBlock.getBoundingClientRect().bottom;
+      
+      if (clickedBelowContent || lines.length === 0) {
+        lines.push('');
+        editingLine = lines.length - 1;
+        cursorPos = 0;
+      }
+      
       render();
-      setTimeout(() => {
-        const inp = document.getElementById('lineInput');
-        if (inp) inp.focus();
-      }, 0);
+      if (editingLine >= 0) {
+        setTimeout(() => {
+          const inp = document.getElementById('lineInput');
+          if (inp) inp.focus();
+        }, 0);
+      }
     }
 
     // Checkbox toggle
