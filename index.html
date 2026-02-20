@@ -8,6 +8,7 @@
   <script src="https://cdn.tailwindcss.com"></script>
   <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/lz-string@1.5.0/libs/lz-string.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/html2pdf.js@0.10.1/dist/html2pdf.bundle.min.js"></script>
   <script>
     tailwind.config = {
       theme: {
@@ -1450,7 +1451,40 @@
       commitCellEdit();
       editingLine = -1;
       render();
-      setTimeout(() => window.print(), 100);
+      
+      // Build a clean HTML doc for PDF
+      const editor = document.getElementById('editor');
+      const clone = editor.cloneNode(true);
+      
+      // Apply print-friendly styles
+      const wrapper = document.createElement('div');
+      wrapper.style.cssText = 'background:white;color:#222;padding:40px;font-family:Inter,-apple-system,sans-serif;max-width:800px;margin:0 auto;';
+      wrapper.innerHTML = clone.innerHTML;
+      
+      // Style overrides for print
+      wrapper.querySelectorAll('h1,h2,h3,h4,h5,h6,strong').forEach(el => el.style.color = '#111');
+      wrapper.querySelectorAll('a').forEach(el => el.style.color = '#0066cc');
+      wrapper.querySelectorAll('em').forEach(el => el.style.color = '#555');
+      wrapper.querySelectorAll('code').forEach(el => { el.style.background = '#f0f0f0'; el.style.color = '#c7254e'; });
+      wrapper.querySelectorAll('pre').forEach(el => { el.style.background = '#f5f5f5'; el.style.border = '1px solid #ddd'; });
+      wrapper.querySelectorAll('pre code').forEach(el => { el.style.background = 'none'; el.style.color = '#333'; });
+      wrapper.querySelectorAll('blockquote').forEach(el => { el.style.borderColor = '#999'; el.style.color = '#666'; });
+      wrapper.querySelectorAll('hr').forEach(el => el.style.borderColor = '#ccc');
+      wrapper.querySelectorAll('h2').forEach(el => el.style.borderColor = '#ccc');
+      wrapper.querySelectorAll('table').forEach(el => el.style.borderColor = '#ccc');
+      wrapper.querySelectorAll('th').forEach(el => { el.style.background = '#f0f0f0'; el.style.color = '#111'; el.style.borderColor = '#ccc'; });
+      wrapper.querySelectorAll('td').forEach(el => { el.style.borderColor = '#ccc'; el.style.color = '#222'; });
+      wrapper.querySelectorAll('.collapse-toggle,.table-add-col,.table-add-row,.col-delete,.row-delete').forEach(el => el.remove());
+      
+      const opt = {
+        margin: [10, 10, 10, 10],
+        filename: 'document.pdf',
+        image: { type: 'jpeg', quality: 0.98 },
+        html2canvas: { scale: 2, useCORS: true },
+        jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' }
+      };
+      
+      html2pdf().set(opt).from(wrapper).save();
     }
 
     function exportMd() {
