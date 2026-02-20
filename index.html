@@ -76,7 +76,7 @@
     #editor {
       max-width: 800px;
       margin: 0 auto;
-      padding: 80px 40px 120px;
+      padding: 70px 40px 60vh;
       min-height: 100%;
     }
 
@@ -607,13 +607,14 @@
         const input = document.getElementById('lineInput');
         if (input) {
           input.focus();
-          // Preserve cursor position if we have it
           if (typeof cursorPos === 'number') {
             input.setSelectionRange(cursorPos, cursorPos);
             cursorPos = null;
           } else {
             input.setSelectionRange(input.value.length, input.value.length);
           }
+          // Scroll into view
+          input.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
         }
       }
     }
