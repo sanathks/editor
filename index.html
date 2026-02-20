@@ -1134,9 +1134,55 @@
     document.addEventListener('input', e => {
       if (e.target.id === 'lineInput' && editingLine >= 0) {
         lines[editingLine] = e.target.value;
-        // Don't re-render on every keystroke - just update the data
-        // We'll save on commit
       }
+    });
+
+    // Handle paste - split multi-line content into separate lines
+    document.addEventListener('paste', e => {
+      const input = document.getElementById('lineInput');
+      if (!input || editingLine < 0) {
+        // Paste into empty doc
+        const text = e.clipboardData.getData('text');
+        if (!text) return;
+        e.preventDefault();
+        pushUndo();
+        const pastedLines = text.split('\n');
+        lines.push(...pastedLines);
+        editingLine = -1;
+        saveToUrl();
+        render();
+        return;
+      }
+      
+      if (e.target !== input) return;
+      
+      const text = e.clipboardData.getData('text');
+      if (!text || !text.includes('\n')) return; // Single line paste - let default handle it
+      
+      e.preventDefault();
+      pushUndo();
+      
+      const pos = input.selectionStart;
+      const end = input.selectionEnd;
+      const currentVal = input.value;
+      const before = currentVal.substring(0, pos);
+      const after = currentVal.substring(end);
+      
+      const pastedLines = text.split('\n');
+      
+      // First pasted line merges with text before cursor
+      pastedLines[0] = before + pastedLines[0];
+      // Last pasted line merges with text after cursor
+      pastedLines[pastedLines.length - 1] += after;
+      
+      // Replace current line with the split lines
+      lines.splice(editingLine, 1, ...pastedLines);
+      
+      // Move editing to last pasted line
+      const lastLineIdx = editingLine + pastedLines.length - 1;
+      editingLine = -1; // Stop editing to show all rendered
+      saveToUrl();
+      render();
     });
 
     function handleMainClick(e) {
