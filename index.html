@@ -357,12 +357,8 @@
   </header>
 
   <!-- Main scrollable area -->
-  <main id="main" class="flex-1 overflow-y-auto" style="padding-top:0">
+  <main id="main" class="flex-1 overflow-y-auto" style="padding-top:0;cursor:text">
     <div id="editor"></div>
-    <div id="emptyState" style="cursor:text">
-      <h2>Start writing</h2>
-      <p>Click anywhere to begin. Your document is stored in the URL.<br>Just share the link.</p>
-    </div>
   </main>
 
   <!-- Footer -->
@@ -531,14 +527,11 @@
     // ========== Rendering ==========
     function render() {
       const editor = document.getElementById('editor');
-      const emptyState = document.getElementById('emptyState');
 
-      if (lines.length === 0) {
-        editor.innerHTML = '';
-        emptyState.style.display = 'block';
+      if (lines.length === 0 && editingLine < 0) {
+        editor.innerHTML = '<div style="text-align:center;padding:120px 20px;color:#565f89;"><h2 style="color:#a9b1d6;font-size:1.3em;margin-bottom:8px;">Start writing</h2><p style="font-size:14px;">Click anywhere to begin. Your document is stored in the URL.</p></div>';
         return;
       }
-      emptyState.style.display = 'none';
 
       const codeRanges = getCodeBlockRanges();
       const tableRanges = getTableRanges();
@@ -855,22 +848,20 @@
       }
     });
 
-    // Click outside lines to stop editing or create new line
+    // Click anywhere in main area
     document.getElementById('main').addEventListener('mousedown', e => {
-      if (e.target.closest('.tool-btn') || e.target.closest('.dropdown')) return;
+      // Don't interfere with toolbar
+      if (e.target.closest('header')) return;
+      // Don't interfere with line clicks (handled by onclick on .line)
+      if (e.target.closest('.line')) return;
       
-      if (e.target.closest('.line')) return; // Handled by line's onclick
+      // Commit any current edit
+      if (editingLine >= 0) commitEdit();
       
-      // Clicked empty space
-      if (editingLine >= 0) {
-        commitEdit();
-      }
-      
-      // Create a new editable line
+      // Create a new editable line at the end
       lines.push('');
       editingLine = lines.length - 1;
       cursorPos = 0;
-      saveToUrl();
       render();
       requestAnimationFrame(() => {
         const inp = document.getElementById('lineInput');
