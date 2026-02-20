@@ -855,32 +855,23 @@
       }
     });
 
-    // Click outside to stop editing
+    // Click outside to stop editing, or click empty area to create new line
     document.getElementById('main').addEventListener('mousedown', e => {
+      if (e.target.closest('.tool-btn') || e.target.closest('.dropdown')) return;
       if (!e.target.closest('.line') && editingLine >= 0) {
         commitEdit();
         render();
       }
-      // Click below content to add new line
-      if (!e.target.closest('.line') && !e.target.closest('#emptyState')) {
-        const editor = document.getElementById('editor');
-        const rect = editor.getBoundingClientRect();
-        if (e.clientY > rect.top + rect.height - 60 || lines.length === 0) {
-          pushUndo();
-          lines.push('');
-          editingLine = lines.length - 1;
-          cursorPos = 0;
-          saveToUrl();
-          render();
-        }
+      // Click on empty area (below content, or empty doc) to create editable line
+      if (!e.target.closest('.line')) {
+        // Always allow creating a new line by clicking empty space
+        pushUndo();
+        lines.push('');
+        editingLine = lines.length - 1;
+        cursorPos = 0;
+        saveToUrl();
+        render();
       }
-    });
-
-    // Empty state click
-    document.getElementById('emptyState').addEventListener('click', () => {
-      lines.push('');
-      editingLine = 0;
-      render();
     });
 
     // Checkbox toggle
@@ -908,37 +899,46 @@
       if (input && editingLine >= 0) {
         pushUndo();
         const pos = input.selectionStart;
-        // If line is empty, just set prefix
         if (input.value.trim() === '') {
           lines[editingLine] = prefix;
           cursorPos = prefix.length;
         } else {
-          // Prepend prefix to line
           lines[editingLine] = prefix + input.value;
           cursorPos = pos + prefix.length;
         }
         saveToUrl();
         render();
       } else {
-        // No active line - create new
+        // No active line or empty doc - always create a new editable line
+        commitEdit();
         pushUndo();
         lines.push(prefix);
         editingLine = lines.length - 1;
         cursorPos = prefix.length;
         saveToUrl();
         render();
+        // Ensure focus happens after render
+        requestAnimationFrame(() => {
+          const inp = document.getElementById('lineInput');
+          if (inp) { inp.focus(); inp.setSelectionRange(prefix.length, prefix.length); }
+        });
       }
     }
 
     function wrapSelection(wrapper) {
       const input = document.getElementById('lineInput');
       if (!input) {
+        commitEdit();
         pushUndo();
         lines.push(wrapper + 'text' + wrapper);
         editingLine = lines.length - 1;
         cursorPos = wrapper.length;
         saveToUrl();
         render();
+        requestAnimationFrame(() => {
+          const inp = document.getElementById('lineInput');
+          if (inp) { inp.focus(); inp.setSelectionRange(wrapper.length, wrapper.length + 4); }
+        });
         return;
       }
       const start = input.selectionStart;
@@ -977,25 +977,27 @@
     }
 
     function insertCodeBlock() {
-      pushUndo();
       const idx = editingLine >= 0 ? editingLine + 1 : lines.length;
       commitEdit();
+      pushUndo();
       lines.splice(idx, 0, '```', '', '```');
       editingLine = idx + 1;
       cursorPos = 0;
       saveToUrl();
       render();
+      requestAnimationFrame(() => { const inp = document.getElementById('lineInput'); if (inp) inp.focus(); });
     }
 
     function insertTable() {
-      pushUndo();
       const idx = editingLine >= 0 ? editingLine + 1 : lines.length;
       commitEdit();
+      pushUndo();
       lines.splice(idx, 0, '| Header | Header |', '| --- | --- |', '| Cell | Cell |');
       editingLine = idx;
       cursorPos = 2;
       saveToUrl();
       render();
+      requestAnimationFrame(() => { const inp = document.getElementById('lineInput'); if (inp) inp.focus(); });
     }
 
     // ========== Undo/Redo ==========
