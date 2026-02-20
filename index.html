@@ -359,7 +359,7 @@
   <!-- Main scrollable area -->
   <main id="main" class="flex-1 overflow-y-auto" style="padding-top:0">
     <div id="editor"></div>
-    <div id="emptyState">
+    <div id="emptyState" style="cursor:text">
       <h2>Start writing</h2>
       <p>Click anywhere to begin. Your document is stored in the URL.<br>Just share the link.</p>
     </div>
@@ -855,23 +855,27 @@
       }
     });
 
-    // Click outside to stop editing, or click empty area to create new line
+    // Click outside lines to stop editing or create new line
     document.getElementById('main').addEventListener('mousedown', e => {
       if (e.target.closest('.tool-btn') || e.target.closest('.dropdown')) return;
-      if (!e.target.closest('.line') && editingLine >= 0) {
+      
+      if (e.target.closest('.line')) return; // Handled by line's onclick
+      
+      // Clicked empty space
+      if (editingLine >= 0) {
         commitEdit();
-        render();
       }
-      // Click on empty area (below content, or empty doc) to create editable line
-      if (!e.target.closest('.line')) {
-        // Always allow creating a new line by clicking empty space
-        pushUndo();
-        lines.push('');
-        editingLine = lines.length - 1;
-        cursorPos = 0;
-        saveToUrl();
-        render();
-      }
+      
+      // Create a new editable line
+      lines.push('');
+      editingLine = lines.length - 1;
+      cursorPos = 0;
+      saveToUrl();
+      render();
+      requestAnimationFrame(() => {
+        const inp = document.getElementById('lineInput');
+        if (inp) inp.focus();
+      });
     });
 
     // Checkbox toggle
