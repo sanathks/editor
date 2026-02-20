@@ -259,18 +259,18 @@
     .line:hover .collapse-toggle { opacity: 1; }
     .collapse-toggle:hover { background: rgba(122, 162, 247, 0.15); color: #a9b1d6; }
 
-    /* Edit input */
-    .line-edit {
-      width: 100%;
-      background: transparent;
-      color: #c0caf5;
-      border: none;
+    /* Editable line */
+    .line-editable {
       outline: none;
       font-family: 'JetBrains Mono', monospace;
-      font-size: 15px;
+      font-size: 14px;
       line-height: 1.7;
-      padding: 0 4px;
+      color: #c0caf5;
       caret-color: #7aa2f7;
+      white-space: pre-wrap;
+      word-wrap: break-word;
+      min-height: 1.4em;
+      padding: 0 2px;
     }
 
     /* Scrollbar */
@@ -645,7 +645,7 @@
         }
 
         if (isEditing) {
-          html += `<input class="line-edit" id="lineInput" value="${escapeAttr(line)}" data-line="${i}" />`;
+          html += `<div class="line-editable" id="lineInput" contenteditable="true" data-line="${i}">${escapeHtml(line)}</div>`;
         } else {
           html += `<div class="line-preview">${renderLinePreview(line, i)}</div>`;
         }
@@ -656,19 +656,23 @@
 
       editor.innerHTML = html;
 
-      // Focus input if editing
+      // Focus editable if editing
       if (editingLine >= 0) {
-        const input = document.getElementById('lineInput');
-        if (input) {
-          input.focus();
-          if (typeof cursorPos === 'number') {
-            input.setSelectionRange(cursorPos, cursorPos);
+        const el = document.getElementById('lineInput');
+        if (el) {
+          el.focus();
+          const textNode = el.firstChild;
+          if (textNode) {
+            const range = document.createRange();
+            const sel = window.getSelection();
+            const pos = typeof cursorPos === 'number' ? Math.min(cursorPos, textNode.length) : textNode.length;
+            range.setStart(textNode, pos);
+            range.collapse(true);
+            sel.removeAllRanges();
+            sel.addRange(range);
             cursorPos = null;
-          } else {
-            input.setSelectionRange(input.value.length, input.value.length);
           }
-          // Scroll into view
-          input.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+          el.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
         }
       }
     }
@@ -931,11 +935,14 @@
 
     function commitEdit() {
       if (editingLine < 0) return;
-      const input = document.getElementById('lineInput');
-      if (input && input.value !== lines[editingLine]) {
-        pushUndo();
-        lines[editingLine] = input.value;
-        saveToUrl();
+      const el = document.getElementById('lineInput');
+      if (el) {
+        const newVal = el.textContent;
+        if (newVal !== lines[editingLine]) {
+          pushUndo();
+          lines[editingLine] = newVal;
+          saveToUrl();
+        }
       }
       editingLine = -1;
     }
@@ -965,7 +972,6 @@
       if ((e.ctrlKey || e.metaKey) && e.key === 'z' && e.shiftKey && !input) { e.preventDefault(); doRedo(); return; }
 
       if (!input) {
-        // Not editing - click to start
         if (e.key === 'Enter' && lines.length === 0) {
           e.preventDefault();
           lines.push('');
@@ -977,18 +983,27 @@
       }
 
       const idx = editingLine;
+      // Get cursor position in contenteditable
+      function getCursorPos() {
+        const sel = window.getSelection();
+        if (!sel.rangeCount) return 0;
+        const range = sel.getRangeAt(0);
+        const preRange = range.cloneRange();
+        preRange.selectNodeContents(input);
+        preRange.setEnd(range.startContainer, range.startOffset);
+        return preRange.toString().length;
+      }
+      const val = input.textContent;
+      const pos = getCursorPos();
 
       // Enter - commit and create new line below
       if (e.key === 'Enter' && !e.shiftKey && !e.ctrlKey && !e.metaKey) {
         e.preventDefault();
         pushUndo();
         
-        const val = input.value;
-        const pos = input.selectionStart;
         const before = val.substring(0, pos);
         const after = val.substring(pos);
         
-        // Determine prefix for new line (list continuation)
         let prefix = '';
         const bulletMatch = val.match(/^(\s*)([-*+])\s/);
         const numMatch = val.match(/^(\s*)(\d+)\.\s/);
@@ -996,33 +1011,21 @@
         
         if (checkMatch) {
           if (val.trim() === '- [ ]' || val.trim() === '- [x]') {
-            // Empty checklist - clear the line
             lines[idx] = '';
-            editingLine = idx;
-            cursorPos = 0;
-            saveToUrl();
-            render();
-            return;
+            editingLine = idx; cursorPos = 0;
+            saveToUrl(); render(); return;
           }
           prefix = checkMatch[1] + '- [ ] ';
         } else if (bulletMatch) {
           if (val.trim().match(/^[-*+]$/)) {
-            lines[idx] = '';
-            editingLine = idx;
-            cursorPos = 0;
-            saveToUrl();
-            render();
-            return;
+            lines[idx] = ''; editingLine = idx; cursorPos = 0;
+            saveToUrl(); render(); return;
           }
           prefix = bulletMatch[1] + bulletMatch[2] + ' ';
         } else if (numMatch) {
           if (val.trim().match(/^\d+\.$/)) {
-            lines[idx] = '';
-            editingLine = idx;
-            cursorPos = 0;
-            saveToUrl();
-            render();
-            return;
+            lines[idx] = ''; editingLine = idx; cursorPos = 0;
+            saveToUrl(); render(); return;
           }
           prefix = numMatch[1] + (parseInt(numMatch[2]) + 1) + '. ';
         }
@@ -1031,19 +1034,17 @@
         lines.splice(idx + 1, 0, prefix + after);
         editingLine = idx + 1;
         cursorPos = prefix.length;
-        saveToUrl();
-        render();
+        saveToUrl(); render();
         return;
       }
 
-      // Backspace at start of line - merge with previous
-      if (e.key === 'Backspace' && input.selectionStart === 0 && input.selectionEnd === 0 && idx > 0) {
+      // Backspace at start - merge with previous
+      if (e.key === 'Backspace' && pos === 0 && window.getSelection().isCollapsed && idx > 0) {
         e.preventDefault();
         pushUndo();
         const prevLen = lines[idx - 1].length;
-        lines[idx - 1] += lines[idx];
+        lines[idx - 1] += val;
         lines.splice(idx, 1);
-        // Adjust collapsed headings
         const newCollapsed = new Set();
         for (const h of collapsedHeadings) {
           if (h < idx) newCollapsed.add(h);
@@ -1052,77 +1053,70 @@
         collapsedHeadings = newCollapsed;
         editingLine = idx - 1;
         cursorPos = prevLen;
-        saveToUrl();
-        render();
+        saveToUrl(); render();
         return;
       }
 
-      // Delete at end of line - merge with next
-      if (e.key === 'Delete' && input.selectionStart === input.value.length && idx < lines.length - 1) {
+      // Delete at end - merge with next
+      if (e.key === 'Delete' && pos === val.length && idx < lines.length - 1) {
         e.preventDefault();
         pushUndo();
-        lines[idx] += lines[idx + 1];
+        lines[idx] = val + lines[idx + 1];
         lines.splice(idx + 1, 1);
-        cursorPos = input.selectionStart;
-        saveToUrl();
-        render();
+        cursorPos = pos;
+        saveToUrl(); render();
         return;
       }
 
-      // Arrow Up - move to previous line
+      // Arrow Up
       if (e.key === 'ArrowUp' && idx > 0) {
         e.preventDefault();
         commitEdit();
         editingLine = idx - 1;
-        // Skip hidden lines
         const hidden = getHiddenLines();
         while (editingLine > 0 && hidden.has(editingLine)) editingLine--;
-        cursorPos = Math.min(input.selectionStart, lines[editingLine].length);
-        render();
-        return;
+        cursorPos = Math.min(pos, lines[editingLine].length);
+        render(); return;
       }
 
-      // Arrow Down - move to next line
+      // Arrow Down
       if (e.key === 'ArrowDown' && idx < lines.length - 1) {
         e.preventDefault();
         commitEdit();
         editingLine = idx + 1;
         const hidden = getHiddenLines();
         while (editingLine < lines.length - 1 && hidden.has(editingLine)) editingLine++;
-        cursorPos = Math.min(input.selectionStart, lines[editingLine].length);
-        render();
-        return;
+        cursorPos = Math.min(pos, lines[editingLine].length);
+        render(); return;
       }
 
-      // Escape - stop editing
+      // Escape
       if (e.key === 'Escape') {
         e.preventDefault();
-        commitEdit();
-        editingLine = -1;
-        render();
-        return;
+        commitEdit(); editingLine = -1;
+        render(); return;
       }
 
       // Tab - indent/outdent
       if (e.key === 'Tab') {
         e.preventDefault();
         pushUndo();
+        lines[idx] = input.textContent; // sync first
         if (e.shiftKey) {
           if (lines[idx].startsWith('  ')) {
             lines[idx] = lines[idx].substring(2);
-            cursorPos = Math.max(0, input.selectionStart - 2);
-          }
+            cursorPos = Math.max(0, pos - 2);
+          } else { cursorPos = pos; }
         } else {
           lines[idx] = '  ' + lines[idx];
-          cursorPos = input.selectionStart + 2;
+          cursorPos = pos + 2;
         }
-        input.value = lines[idx];
-        if (cursorPos !== null) input.setSelectionRange(cursorPos, cursorPos);
-        cursorPos = null;
+        editingLine = idx;
+        saveToUrl(); render();
         return;
       }
 
-      // Ctrl+Z / Ctrl+Shift+Z in input
+      // Ctrl+Z / Ctrl+Shift+Z
       if ((e.ctrlKey || e.metaKey) && e.key === 'z') {
         e.preventDefault();
         if (e.shiftKey) doRedo(); else doUndo();
@@ -1133,56 +1127,57 @@
     // Live update as user types (for URL sync)
     document.addEventListener('input', e => {
       if (e.target.id === 'lineInput' && editingLine >= 0) {
-        lines[editingLine] = e.target.value;
+        lines[editingLine] = e.target.textContent;
       }
     });
 
     // Handle paste - split multi-line content into separate lines
     document.addEventListener('paste', e => {
       const input = document.getElementById('lineInput');
+      const text = (e.clipboardData || window.clipboardData).getData('text');
+      if (!text) return;
+      
       if (!input || editingLine < 0) {
         // Paste into empty doc
-        const text = e.clipboardData.getData('text');
-        if (!text) return;
         e.preventDefault();
         pushUndo();
         const pastedLines = text.split('\n');
         lines.push(...pastedLines);
         editingLine = -1;
-        saveToUrl();
-        render();
+        saveToUrl(); render();
         return;
       }
       
-      if (e.target !== input) return;
-      
-      const text = e.clipboardData.getData('text');
-      if (!text || !text.includes('\n')) return; // Single line paste - let default handle it
+      if (e.target !== input && !input.contains(e.target)) return;
+      if (!text.includes('\n')) return; // Single line - let default handle
       
       e.preventDefault();
       pushUndo();
       
-      const pos = input.selectionStart;
-      const end = input.selectionEnd;
-      const currentVal = input.value;
+      // Get cursor position
+      const sel = window.getSelection();
+      let pos = 0, endPos = 0;
+      if (sel.rangeCount) {
+        const range = sel.getRangeAt(0);
+        const preRange = range.cloneRange();
+        preRange.selectNodeContents(input);
+        preRange.setEnd(range.startContainer, range.startOffset);
+        pos = preRange.toString().length;
+        preRange.setEnd(range.endContainer, range.endOffset);
+        endPos = preRange.toString().length;
+      }
+      
+      const currentVal = input.textContent;
       const before = currentVal.substring(0, pos);
-      const after = currentVal.substring(end);
+      const after = currentVal.substring(endPos);
       
       const pastedLines = text.split('\n');
-      
-      // First pasted line merges with text before cursor
       pastedLines[0] = before + pastedLines[0];
-      // Last pasted line merges with text after cursor
       pastedLines[pastedLines.length - 1] += after;
       
-      // Replace current line with the split lines
       lines.splice(editingLine, 1, ...pastedLines);
-      
-      // Move editing to last pasted line
-      const lastLineIdx = editingLine + pastedLines.length - 1;
-      editingLine = -1; // Stop editing to show all rendered
-      saveToUrl();
-      render();
+      editingLine = -1;
+      saveToUrl(); render();
     });
 
     function handleMainClick(e) {
@@ -1275,24 +1270,29 @@
         lines.push(wrapper + 'text' + wrapper);
         editingLine = lines.length - 1;
         cursorPos = wrapper.length;
-        saveToUrl();
-        render();
-        requestAnimationFrame(() => {
-          const inp = document.getElementById('lineInput');
-          if (inp) { inp.focus(); inp.setSelectionRange(wrapper.length, wrapper.length + 4); }
-        });
+        saveToUrl(); render();
         return;
       }
-      const start = input.selectionStart;
-      const end = input.selectionEnd;
-      const text = input.value;
-      const selected = text.substring(start, end) || 'text';
+      const sel = window.getSelection();
+      const selectedText = sel.toString() || 'text';
+      
+      // Get cursor positions
+      let start = 0, end = 0;
+      if (sel.rangeCount) {
+        const range = sel.getRangeAt(0);
+        const preRange = range.cloneRange();
+        preRange.selectNodeContents(input);
+        preRange.setEnd(range.startContainer, range.startOffset);
+        start = preRange.toString().length;
+        end = start + selectedText.length;
+      }
+      
+      const text = input.textContent;
       pushUndo();
-      const newVal = text.substring(0, start) + wrapper + selected + wrapper + text.substring(end);
+      const newVal = text.substring(0, start) + wrapper + selectedText + wrapper + text.substring(end);
       lines[editingLine] = newVal;
-      input.value = newVal;
-      input.setSelectionRange(start + wrapper.length, start + wrapper.length + selected.length);
-      input.focus();
+      cursorPos = start + wrapper.length;
+      render();
     }
 
     function insertLink() {
@@ -1303,19 +1303,24 @@
         pushUndo();
         lines.push(`[Link](${url})`);
         editingLine = lines.length - 1;
-        saveToUrl();
-        render();
+        saveToUrl(); render();
         return;
       }
-      const start = input.selectionStart;
-      const end = input.selectionEnd;
-      const text = input.value;
-      const selected = text.substring(start, end) || 'Link';
+      const sel = window.getSelection();
+      const selected = sel.toString() || 'Link';
+      let start = 0;
+      if (sel.rangeCount) {
+        const range = sel.getRangeAt(0);
+        const preRange = range.cloneRange();
+        preRange.selectNodeContents(input);
+        preRange.setEnd(range.startContainer, range.startOffset);
+        start = preRange.toString().length;
+      }
+      const text = input.textContent;
       pushUndo();
-      const newVal = text.substring(0, start) + `[${selected}](${url})` + text.substring(end);
-      lines[editingLine] = newVal;
-      input.value = newVal;
-      input.focus();
+      lines[editingLine] = text.substring(0, start) + `[${selected}](${url})` + text.substring(start + selected.length);
+      cursorPos = start + selected.length + url.length + 4;
+      render();
     }
 
     function insertCodeBlock() {
