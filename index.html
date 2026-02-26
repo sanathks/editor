@@ -210,6 +210,7 @@
       color: #c0caf5; border: none; outline: none;
       font-family: 'JetBrains Mono', monospace; font-size: 13px;
       line-height: 1.5; min-height: 32px;
+      resize: none; overflow: auto; white-space: pre-wrap;
     }
     .table-component .cell-input:focus {
       background: rgba(122, 162, 247, 0.12);
@@ -287,6 +288,18 @@
       box-shadow: none;
     }
 
+    /* Keep visual scale while editing markdown headings */
+    .line-editable.edit-h1 { font-size: 2em; font-weight: 700; line-height: 1.2; }
+    .line-editable.edit-h2 { font-size: 1.5em; font-weight: 600; line-height: 1.3; }
+    .line-editable.edit-h3 { font-size: 1.25em; font-weight: 600; line-height: 1.35; }
+    .line-editable.edit-h4 { font-size: 1.1em; font-weight: 600; line-height: 1.4; }
+    .line-editable.edit-h5, .line-editable.edit-h6 { font-size: 1em; font-weight: 600; line-height: 1.5; }
+
+    /* Syntax-aware edit mode styles for common block types */
+    .line-editable.edit-list, .line-editable.edit-checklist { padding-left: 0.15em; }
+    .line-editable.edit-quote { border-left: 3px solid #565f89; padding-left: 0.6em; color: #bb9af7; }
+    .line-editable.edit-codefence, .line-editable.edit-table { font-family: 'JetBrains Mono', monospace; color: #7dcfff; }
+
     /* Scrollbar */
     ::-webkit-scrollbar { width: 8px; }
     ::-webkit-scrollbar-track { background: transparent; }
@@ -358,7 +371,7 @@
   <!-- Top Toolbar -->
   <header class="h-14 flex items-center px-4 z-20 fixed top-0 left-0 right-0" style="background:transparent;pointer-events:none">
     <div class="flex items-center" style="pointer-events:auto">
-      <div style="width:36px;height:36px;background:#7aa2f7;border-radius:10px;display:flex;align-items:center;justify-content:center;font-weight:700;color:#1a1b26;font-size:18px">E</div>
+      <img src="/resources/icons/icon-192.png" alt="Editor" style="width:36px;height:36px;border-radius:10px;object-fit:cover;box-shadow:0 2px 8px rgba(0,0,0,0.25)">
     </div>
     
     <div class="flex-1 flex justify-center" style="pointer-events:auto">
@@ -519,6 +532,27 @@
     function getHeadingLevel(text) {
       const m = text.match(/^(#{1,6})\s/);
       return m ? m[1].length : 0;
+    }
+
+    function getEditingClass(text) {
+      const level = getHeadingLevel(text);
+      if (level >= 1 && level <= 6) return ` edit-h${level}`;
+
+      if (/^(\s*)[-*+]\s\[[ x]\]\s/.test(text)) return ' edit-checklist';
+      if (/^(\s*)[-*+]\s/.test(text)) return ' edit-list';
+      if (/^(\s*)\d+\.\s/.test(text)) return ' edit-list';
+      if (/^(\s*>\s?)+/.test(text)) return ' edit-quote';
+      if (/^```/.test(text)) return ' edit-codefence';
+      if (/^\|/.test(text)) return ' edit-table';
+      return '';
+    }
+
+    function updateEditingVisualState(el, text) {
+      if (!el) return;
+      for (let i = 1; i <= 6; i++) el.classList.remove(`edit-h${i}`);
+      el.classList.remove('edit-list', 'edit-checklist', 'edit-quote', 'edit-codefence', 'edit-table');
+      const cls = getEditingClass(text || '').trim();
+      if (cls) el.classList.add(cls);
     }
 
     function renderLinePreview(text, idx) {
@@ -693,7 +727,7 @@
         }
 
         if (isEditing) {
-          html += `<div class="line-editable" id="lineInput" contenteditable="true" data-line="${i}">${escapeHtml(line)}</div>`;
+          html += `<div class="line-editable${getEditingClass(line)}" id="lineInput" contenteditable="true" data-line="${i}">${escapeHtml(line)}</div>`;
         } else {
           html += `<div class="line-preview">${renderLinePreview(line, i)}</div>`;
         }
@@ -792,7 +826,7 @@
             h += `<button class="col-delete" onclick="tableDeleteCol(${start},${end},${c},event)" title="Delete column">&times;</button>`;
           }
           if (isEditingThis) {
-            h += `<input class="cell-input" id="cellInput" value="${escapeAttr(cellVal)}" data-table="${start}" data-row="${r}" data-col="${c}" />`;
+            h += `<textarea class="cell-input" id="cellInput" data-table="${start}" data-row="${r}" data-col="${c}">${escapeHtml(cellVal)}</textarea>`;
           } else {
             h += `<div class="cell-display" onclick="startCellEdit(${start},${end},${r},${c},event)">${cellVal ? renderInline(cellVal) : '&nbsp;'}</div>`;
           }
@@ -909,12 +943,13 @@
 
       if (e.key === 'Tab') {
         e.preventDefault();
+        const current = { ...editingCell };
         commitCellEdit();
-        const { tableStart, tableEnd, row, col } = editingCell || {};
+        const { tableStart, tableEnd, row, col } = current;
         if (tableStart == null) return;
         const rows = parseTableLines(tableStart, tableEnd);
         const colCount = Math.max(...rows.map(r => r.cells.length));
-        
+
         let newRow = row, newCol = col;
         if (e.shiftKey) {
           newCol--;
@@ -924,7 +959,7 @@
           newCol++;
           if (newCol >= colCount) { newCol = 0; newRow++; }
           if (newRow >= rows.length) {
-            // Add new row
+            // Add new row and focus first col
             tableAddRow(tableStart, tableEnd, e);
             return;
           }
@@ -940,16 +975,26 @@
 
       if (e.key === 'Enter' && !e.shiftKey) {
         e.preventDefault();
+        const current = { ...editingCell };
         commitCellEdit();
-        const { tableStart, tableEnd, row, col } = editingCell || {};
+        const { tableStart, tableEnd, row, col } = current;
         if (tableStart == null) return;
         const rows = parseTableLines(tableStart, tableEnd);
-        let newRow = row + 1;
+        const colCount = Math.max(...rows.map(r => r.cells.length));
+
+        let newRow = row;
+        let newCol = col + 1;
+        if (newCol >= colCount) {
+          newCol = 0;
+          newRow = row + 1;
+        }
+
         if (newRow >= rows.length) {
           tableAddRow(tableStart, tableEnd, e);
           return;
         }
-        editingCell = { tableStart, tableEnd, row: newRow, col };
+
+        editingCell = { tableStart, tableEnd, row: newRow, col: newCol };
         render();
         setTimeout(() => {
           const inp = document.getElementById('cellInput');
@@ -1005,6 +1050,55 @@
       render();
     }
 
+    function getClosest(node, selector) {
+      let cur = node;
+      while (cur) {
+        if (cur.nodeType === Node.ELEMENT_NODE && cur.matches(selector)) return cur;
+        cur = cur.parentNode;
+      }
+      return null;
+    }
+
+    function getSelectionLineRange(sel) {
+      if (!sel || !sel.rangeCount || sel.isCollapsed) return null;
+      const range = sel.getRangeAt(0);
+      const startLine = getSelectionBoundaryLine(range.startContainer, true);
+      const endLine = getSelectionBoundaryLine(range.endContainer, false);
+      if (startLine == null || endLine == null) return null;
+      return {
+        start: Math.min(startLine, endLine),
+        end: Math.max(startLine, endLine)
+      };
+    }
+
+    function getSelectionBoundaryLine(node, isStart) {
+      const lineEl = getClosest(node, '.line[data-line]');
+      if (lineEl) {
+        const start = parseInt(lineEl.dataset.line, 10);
+        const codeEnd = parseInt(lineEl.dataset.codeEnd, 10);
+        if (!Number.isNaN(codeEnd)) return isStart ? start : codeEnd;
+        return start;
+      }
+
+      const tableEl = getClosest(node, '.table-component[data-table-start][data-table-end]');
+      if (!tableEl) return null;
+      const start = parseInt(tableEl.dataset.tableStart, 10);
+      const end = parseInt(tableEl.dataset.tableEnd, 10);
+      if (Number.isNaN(start) || Number.isNaN(end)) return null;
+      return isStart ? start : end;
+    }
+
+    function deleteLineRange(start, end) {
+      const count = end - start + 1;
+      lines.splice(start, count);
+      const newCollapsed = new Set();
+      for (const h of collapsedHeadings) {
+        if (h < start) newCollapsed.add(h);
+        else if (h > end) newCollapsed.add(h - count);
+      }
+      collapsedHeadings = newCollapsed;
+    }
+
     // ========== Input handling ==========
     document.addEventListener('keydown', e => {
       // Skip if editing a table cell (handled by cell keydown)
@@ -1018,6 +1112,23 @@
       if ((e.ctrlKey || e.metaKey) && e.key === 'k') { e.preventDefault(); insertLink(); return; }
       if ((e.ctrlKey || e.metaKey) && e.key === 'z' && !e.shiftKey && !input) { e.preventDefault(); doUndo(); return; }
       if ((e.ctrlKey || e.metaKey) && e.key === 'z' && e.shiftKey && !input) { e.preventDefault(); doRedo(); return; }
+
+      // Delete/Backspace for cross-line/block selection
+      if ((e.key === 'Backspace' || e.key === 'Delete') && !e.ctrlKey && !e.metaKey && !e.altKey) {
+        const sel = window.getSelection();
+        const lineRange = getSelectionLineRange(sel);
+        if (lineRange && lineRange.start !== lineRange.end) {
+          e.preventDefault();
+          pushUndo();
+          if (editingLine >= 0) commitEdit();
+          deleteLineRange(lineRange.start, lineRange.end);
+          editingLine = -1;
+          cursorPos = null;
+          saveToUrl();
+          render();
+          return;
+        }
+      }
 
       if (!input) {
         if (e.key === 'Enter' && lines.length === 0) {
@@ -1044,38 +1155,47 @@
       const val = input.textContent;
       const pos = getCursorPos();
 
-      // Enter - commit and create new line below
+      // Enter - commit and create new line below with smart continuation
       if (e.key === 'Enter' && !e.shiftKey && !e.ctrlKey && !e.metaKey) {
         e.preventDefault();
         pushUndo();
-        
+
         const before = val.substring(0, pos);
         const after = val.substring(pos);
-        
+
         let prefix = '';
-        const bulletMatch = val.match(/^(\s*)([-*+])\s/);
-        const numMatch = val.match(/^(\s*)(\d+)\.\s/);
-        const checkMatch = val.match(/^(\s*)[-*+]\s\[[ x]\]\s/);
-        
+        const src = before.length ? before : val;
+
+        const checkMatch = src.match(/^(\s*)([-*+])\s\[[ x]\]\s/);
+        const bulletMatch = src.match(/^(\s*)([-*+])\s/);
+        const numMatch = src.match(/^(\s*)(\d+)\.\s/);
+        const quoteMatch = src.match(/^(\s*>\s?)+/);
+
         if (checkMatch) {
-          if (val.trim() === '- [ ]' || val.trim() === '- [x]') {
+          const markerOnly = val.trim().match(/^[-*+]\s\[[ x]\]$/);
+          if (markerOnly) {
             lines[idx] = '';
             editingLine = idx; cursorPos = 0;
             saveToUrl(); render(); return;
           }
-          prefix = checkMatch[1] + '- [ ] ';
+          prefix = checkMatch[1] + checkMatch[2] + ' [ ] ';
         } else if (bulletMatch) {
-          if (val.trim().match(/^[-*+]$/)) {
+          const markerOnly = val.trim().match(/^[-*+]$/);
+          if (markerOnly) {
             lines[idx] = ''; editingLine = idx; cursorPos = 0;
             saveToUrl(); render(); return;
           }
           prefix = bulletMatch[1] + bulletMatch[2] + ' ';
         } else if (numMatch) {
-          if (val.trim().match(/^\d+\.$/)) {
+          const markerOnly = val.trim().match(/^\d+\.$/);
+          if (markerOnly) {
             lines[idx] = ''; editingLine = idx; cursorPos = 0;
             saveToUrl(); render(); return;
           }
           prefix = numMatch[1] + (parseInt(numMatch[2]) + 1) + '. ';
+        } else if (quoteMatch) {
+          // Continue blockquotes with same nesting level
+          prefix = quoteMatch[0].replace(/\s*$/, '') + ' ';
         }
 
         lines[idx] = before;
@@ -1176,6 +1296,7 @@
     document.addEventListener('input', e => {
       if (e.target.id === 'lineInput' && editingLine >= 0) {
         lines[editingLine] = e.target.textContent;
+        updateEditingVisualState(e.target, e.target.textContent);
       }
     });
 
@@ -1229,6 +1350,10 @@
     });
 
     function handleMainClick(e) {
+      // Keep drag-selection intact (don't re-render on selection mouseup)
+      const sel = window.getSelection();
+      if (sel && !sel.isCollapsed) return;
+
       // Don't interfere with toolbar, line clicks, or table components
       if (e.target.closest('header')) return;
       if (e.target.closest('.line')) return;
@@ -1371,12 +1496,33 @@
       render();
     }
 
+    function ensureBlockGap(idx, blockLineCount) {
+      let start = idx;
+      let count = blockLineCount;
+
+      // Add blank line before block when previous line has content
+      if (start > 0 && (lines[start - 1] || '').trim() !== '') {
+        lines.splice(start, 0, '');
+        start += 1;
+        count += 1;
+      }
+
+      // Add blank line after block when next line has content
+      const afterIdx = start + count;
+      if (afterIdx < lines.length && (lines[afterIdx] || '').trim() !== '') {
+        lines.splice(afterIdx, 0, '');
+      }
+
+      return { start, count };
+    }
+
     function insertCodeBlock() {
       const idx = editingLine >= 0 ? editingLine + 1 : lines.length;
       commitEdit();
       pushUndo();
       lines.splice(idx, 0, '```', '', '```');
-      editingLine = idx + 1;
+      const block = ensureBlockGap(idx, 3);
+      editingLine = block.start + 1;
       cursorPos = 0;
       saveToUrl();
       render();
@@ -1389,9 +1535,10 @@
       commitCellEdit();
       pushUndo();
       lines.splice(idx, 0, '| Header | Header |', '| --- | --- |', '|  |  |');
+      const block = ensureBlockGap(idx, 3);
       editingLine = -1;
       // Start editing first data cell
-      editingCell = { tableStart: idx, tableEnd: idx + 2, row: 1, col: 0 };
+      editingCell = { tableStart: block.start, tableEnd: block.start + 2, row: 1, col: 0 };
       saveToUrl();
       render();
       setTimeout(() => {
