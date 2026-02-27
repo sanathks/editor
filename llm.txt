@@ -4,7 +4,6 @@ This file explains how to generate shareable Editor documents.
 
 ## Product
 - App URL: https://editor.sanath.dev
-- Netlify URL: https://sanath-editor.netlify.app
 - Editor is client-side markdown with URL-hash state.
 
 ## Share URL format
