@@ -1,72 +1,77 @@
 # Editor LLM Integration Guide
 
-This file explains how to generate shareable Editor documents.
+This file explains the LLM-safe way to create shareable Editor documents.
 
 ## Product
 - App URL: https://editor.sanath.dev
-- Editor is client-side markdown with URL-hash state.
+- Editor is client-side markdown.
 
-## Share URL format
-Editor stores markdown in the URL hash like this:
+## Recommended flow (no compression library needed)
+Use the short-link API flow:
+1. Send markdown to `POST /api/doc`
+2. API returns a short id and URL
+3. Share the returned short URL (`/d/:id`)
 
-`https://editor.sanath.dev/#doc=<ENCODED_MARKDOWN>`
+This avoids `lz-string` and works out of the box for LLMs.
 
-Where:
-- `<ENCODED_MARKDOWN>` is produced by `LZString.compressToEncodedURIComponent(markdown)`
-- Markdown is the full document text joined with `\n`
+## API contract
 
-## Encoding algorithm
-Use [lz-string](https://www.npmjs.com/package/lz-string):
-- Encode: `compressToEncodedURIComponent(markdown)`
-- Decode: `decompressFromEncodedURIComponent(encoded)`
+### Create document
+`POST /api/doc`
 
-## JavaScript example (generate share URL)
-```js
-import LZString from "lz-string";
-
-const markdown = `# Project Plan
-
-## Goals
-- Ship v1
-- Validate UX
-
-| Task | Owner |
-| --- | --- |
-| Build editor | Rex |
-| Review | Sanath |
-`;
-
-const encoded = LZString.compressToEncodedURIComponent(markdown);
-const shareUrl = `https://editor.sanath.dev/#doc=${encoded}`;
-console.log(shareUrl);
+Request JSON:
+```json
+{
+  "markdown": "# Title\n\nHello"
+}
 ```
 
-## JavaScript example (decode URL)
-```js
-import LZString from "lz-string";
+Response JSON (example):
+```json
+{
+  "id": "abc123",
+  "shortUrl": "https://editor.sanath.dev/d/abc123",
+  "url": "https://editor.sanath.dev/d/abc123"
+}
+```
 
-const hash = "#doc=...";
-const encoded = hash.startsWith("#doc=") ? hash.slice(5) : "";
-const markdown = LZString.decompressFromEncodedURIComponent(encoded) || "";
-console.log(markdown);
+### Resolve document
+`GET /d/:id`
+
+- Returns the document route for that id (shareable link behavior)
+
+## JavaScript example
+```js
+async function createEditorShareUrl(markdown) {
+  const res = await fetch("https://editor.sanath.dev/api/doc", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ markdown })
+  });
+
+  if (!res.ok) throw new Error(`Create doc failed: ${res.status}`);
+
+  const data = await res.json();
+  return data.shortUrl || data.url;
+}
+
+// usage
+const url = await createEditorShareUrl("# Hello\n\n- one\n- two");
+console.log(url);
+```
+
+## curl example
+```bash
+curl -s -X POST "https://editor.sanath.dev/api/doc" \
+  -H "Content-Type: application/json" \
+  -d '{"markdown":"# Hello\n\n- one\n- two"}'
 ```
 
 ## Rules for LLM-generated content
-1. Always output valid markdown.
-2. Put the full document in one markdown string.
-3. Encode with `compressToEncodedURIComponent`.
-4. Return full URL with `#doc=`.
-5. Do not include secrets in generated documents.
+1. Always produce valid markdown.
+2. Send full markdown as one string in `markdown`.
+3. Use `POST /api/doc` and return the `shortUrl`.
+4. Do not include secrets in document content.
 
-## Notes
-- If markdown is empty, Editor uses URL without `#doc`.
-- Very large documents can create long URLs (browser/share limits).
-- Multiline table cells are supported in UI editing, but markdown serialization remains line-based.
-
-## Minimal helper (copy/paste)
-```js
-function makeEditorUrl(markdown, base = "https://editor.sanath.dev") {
-  const encoded = LZString.compressToEncodedURIComponent(markdown || "");
-  return encoded ? `${base}/#doc=${encoded}` : `${base}/`;
-}
-```
+## Backward compatibility note
+Legacy links using `#doc=` may still exist, but new automations should use `/api/doc` + `/d/:id`.
