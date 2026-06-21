@@ -595,6 +595,36 @@
       return Math.floor(match[1].length / 2);
     }
 
+    // Sequential display numbers for ordered-list items (1,2,3…) keyed by line
+    // index, respecting indent level (nested lists number independently). A run
+    // breaks on a blank line or a non-list line. Raw source is never changed.
+    let _orderedNums = {};
+    function computeOrderedNumbers() {
+      const map = {};
+      const counters = {};   // indent level -> current count
+      const resetDeeper = (lvl) => { for (const k in counters) if (Number(k) > lvl) delete counters[k]; };
+      for (let i = 0; i < lines.length; i++) {
+        const t = lines[i];
+        const ordered = /^\s*\d+\.\s/.test(t);
+        const bullet = /^\s*[-*+]\s/.test(t);
+        if (t.trim() === '' || (!ordered && !bullet)) { for (const k in counters) delete counters[k]; continue; }
+        const lvl = getIndentLevel(t);
+        resetDeeper(lvl);
+        if (ordered) {
+          if (counters[lvl] === undefined) {            // first at this level → honor explicit start
+            const m = t.match(/^\s*(\d+)\./);
+            counters[lvl] = m ? parseInt(m[1], 10) : 1;
+          } else {
+            counters[lvl] += 1;
+          }
+          map[i] = counters[lvl];
+        } else {
+          delete counters[lvl];   // a bullet at this level restarts ordered numbering after it
+        }
+      }
+      return map;
+    }
+
     function getHeadingLevel(text) {
       const m = text.match(/^(#{1,6})\s/);
       return m ? m[1].length : 0;
@@ -662,7 +692,7 @@
         case 'numbered-indent': {
           const stripped = text.trimStart();
           const match = stripped.match(/^(\d+)\.\s(.*)/);
-          const num = match ? match[1] : '1';
+          const num = _orderedNums[idx] != null ? _orderedNums[idx] : (match ? match[1] : '1');
           const content = match ? match[2] : stripped;
           const indent = getIndentLevel(text);
           return `<div style="padding-left:${indent * 1.5}em"><span style="color:#565f89;margin-right:6px">${num}.</span>${renderInline(content)}</div>`;
@@ -785,6 +815,7 @@
         return;
       }
 
+      _orderedNums = computeOrderedNumbers();
       const codeRanges = getCodeBlockRanges();
       const tableRanges = getTableRanges();
       const bqRanges = getBlockquoteRanges();
