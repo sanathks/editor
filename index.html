@@ -22,33 +22,80 @@
         extend: {
           colors: {
             storm: {
-              bg: '#1a1b26',
-              bg2: '#24283b',
-              bg3: '#1e2030',
-              fg: '#a9b1d6',
-              fgBright: '#c0caf5',
-              accent: '#7aa2f7',
-              green: '#9ece6a',
-              red: '#f7768e',
-              yellow: '#e0af68',
-              purple: '#bb9af7',
-              cyan: '#7dcfff',
-              orange: '#ff9e64',
-              muted: '#565f89',
-              border: '#414868',
+              bg: 'var(--bg)',
+              bg2: 'var(--surface)',
+              bg3: 'var(--surface-2)',
+              fg: 'var(--text)',
+              fgBright: 'var(--text-bright)',
+              accent: 'var(--accent)',
+              green: 'var(--green)',
+              red: 'var(--red)',
+              yellow: 'var(--yellow)',
+              purple: 'var(--accent-2)',
+              cyan: 'var(--cyan)',
+              orange: 'var(--code)',
+              muted: 'var(--text-muted)',
+              border: 'var(--border)',
             }
           }
         }
       }
     }
   </script>
+  <script>
+    // Apply persisted theme before paint to avoid a flash. Default = light.
+    try { if (localStorage.getItem('theme') === 'dark') document.documentElement.setAttribute('data-theme', 'dark'); } catch (e) {}
+  </script>
   <style>
     @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap');
-    
+
+    /* Theme palettes. Default = light "paper" (pockd-derived); dark via
+       data-theme="dark" on <html>. One coherent light palette is used across
+       chrome + writing surface for simplicity. */
+    :root {
+      --bg: #FAFAFA;            /* writing surface */
+      --surface: #F2F0EB;       /* toolbar / code / panels */
+      --surface-2: #F7F5F0;
+      --border: #DDD9D0;
+      --text: #2C2A26;
+      --text-bright: #1A1A1A;
+      --text-muted: #9A9690;
+      --accent: #6366F1;        /* indigo */
+      --accent-2: #7C3AED;      /* violet (emphasis) */
+      --code: #B5530F;          /* inline code */
+      --green: #15803D;
+      --red: #DC2626;
+      --yellow: #B45309;
+      --cyan: #0E7490;
+      --check: #6366F1;
+    }
+    [data-theme="dark"] {
+      --bg: #1a1b26;
+      --surface: #24283b;
+      --surface-2: #1e2030;
+      --border: #414868;
+      --text: #a9b1d6;
+      --text-bright: #c0caf5;
+      --text-muted: #565f89;
+      --accent: #7aa2f7;
+      --accent-2: #bb9af7;
+      --code: #ff9e64;
+      --green: #9ece6a;
+      --red: #f7768e;
+      --yellow: #e0af68;
+      --cyan: #7dcfff;
+      --check: #4caf50;
+    }
+    /* Smooth theme switch */
+    body, .tool-btn, .dropdown-menu, .dropdown-item, #footer, #main, .line,
+    .line-preview, .line-preview pre, .line-preview code, #emptyState kbd {
+      transition: background-color 0.15s ease-out, border-color 0.15s ease-out, color 0.15s ease-out;
+    }
+
     * { box-sizing: border-box; margin: 0; padding: 0; }
     body { 
-      background: #1a1b26; 
-      color: #a9b1d6; 
+      background: var(--bg); 
+      color: var(--text); 
       font-family: 'Inter', -apple-system, sans-serif;
       overflow: hidden;
       height: 100vh;
@@ -59,23 +106,23 @@
       width: 36px; height: 36px; 
       display: flex; align-items: center; justify-content: center;
       background: transparent; border: none; border-radius: 8px;
-      color: #a9b1d6; cursor: pointer; transition: all 0.15s;
+      color: var(--text); cursor: pointer; transition: all 0.15s;
     }
     .tool-btn:hover { background: rgba(122, 162, 247, 0.15); }
-    .tool-btn.active { background: #7aa2f7; color: #1a1b26; }
+    .tool-btn.active { background: var(--accent); color: var(--bg); }
     .tool-btn svg { width: 20px; height: 20px; }
-    .divider { width: 1px; height: 24px; background: #414868; margin: 0 4px; flex-shrink: 0; }
+    .divider { width: 1px; height: 24px; background: var(--border); margin: 0 4px; flex-shrink: 0; }
     
     .dropdown { position: relative; }
     .dropdown-menu { 
       position: absolute; top: 44px; left: 50%; transform: translateX(-50%);
-      background: #24283b; border: 1px solid #414868; border-radius: 8px;
+      background: var(--surface); border: 1px solid var(--border); border-radius: 8px;
       padding: 6px; min-width: 140px; z-index: 100; display: none;
     }
     .dropdown.open .dropdown-menu { display: block; }
     .dropdown-item {
       display: flex; align-items: center; gap: 8px; padding: 8px 12px;
-      border-radius: 6px; cursor: pointer; color: #a9b1d6; font-size: 13px;
+      border-radius: 6px; cursor: pointer; color: var(--text); font-size: 13px;
       white-space: nowrap;
     }
     .dropdown-item:hover { background: rgba(122, 162, 247, 0.15); }
@@ -107,18 +154,18 @@
 
     /* Preview content styles */
     .line-preview { line-height: 1.7; }
-    .line-preview h1 { font-size: 2em; font-weight: 700; color: #c0caf5; margin: 0.4em 0 0.2em; line-height: 1.2; }
-    .line-preview h2 { font-size: 1.5em; font-weight: 600; color: #c0caf5; margin: 0.35em 0 0.15em; line-height: 1.3; border-bottom: 1px solid #414868; padding-bottom: 0.15em; }
-    .line-preview h3 { font-size: 1.25em; font-weight: 600; color: #c0caf5; margin: 0.3em 0 0.1em; }
-    .line-preview h4 { font-size: 1.1em; font-weight: 600; color: #c0caf5; margin: 0.2em 0 0.1em; }
-    .line-preview h5, .line-preview h6 { font-size: 1em; font-weight: 600; color: #a9b1d6; }
+    .line-preview h1 { font-size: 2em; font-weight: 700; color: var(--text-bright); margin: 0.4em 0 0.2em; line-height: 1.2; }
+    .line-preview h2 { font-size: 1.5em; font-weight: 600; color: var(--text-bright); margin: 0.35em 0 0.15em; line-height: 1.3; border-bottom: 1px solid var(--border); padding-bottom: 0.15em; }
+    .line-preview h3 { font-size: 1.25em; font-weight: 600; color: var(--text-bright); margin: 0.3em 0 0.1em; }
+    .line-preview h4 { font-size: 1.1em; font-weight: 600; color: var(--text-bright); margin: 0.2em 0 0.1em; }
+    .line-preview h5, .line-preview h6 { font-size: 1em; font-weight: 600; color: var(--text); }
     .line-preview p { margin: 0; line-height: 1.7; }
-    .line-preview a { color: #7aa2f7; text-decoration: underline; }
-    .line-preview strong { color: #c0caf5; font-weight: 600; }
-    .line-preview em { color: #bb9af7; }
+    .line-preview a { color: var(--accent); text-decoration: underline; }
+    .line-preview strong { color: var(--text-bright); font-weight: 600; }
+    .line-preview em { color: var(--accent-2); }
     .line-preview code {
-      background: #24283b; padding: 2px 6px; border-radius: 4px;
-      font-family: 'JetBrains Mono', monospace; font-size: 0.85em; color: #ff9e64;
+      background: var(--surface); padding: 2px 6px; border-radius: 4px;
+      font-family: 'JetBrains Mono', monospace; font-size: 0.85em; color: var(--code);
     }
     /* Fenced code blocks: container chrome + let highlight.js color the tokens
        (don't apply the inline-code orange/padding to block code). */
@@ -131,15 +178,15 @@
       font-family: 'JetBrains Mono', monospace; font-size: 0.85em;
     }
     .line-preview blockquote { 
-      border-left: 3px solid #7aa2f7; padding-left: 16px;
-      color: #565f89; font-style: italic;
+      border-left: 3px solid var(--accent); padding-left: 16px;
+      color: var(--text-muted); font-style: italic;
     }
     .line-preview blockquote p { margin: 0; }
     .line-preview blockquote.bq-group { padding-top: 3px; padding-bottom: 3px; }
     .line-preview blockquote .bq-line { margin: 0; cursor: text; }
-    .line-preview blockquote.bq-nested { border-left: 3px solid #565f89; margin: 2px 0 2px 4px; }
-    .line-preview hr { border: none; border-top: 1px solid #414868; margin: 0.8em 0; }
-    .line-preview del { color: #565f89; }
+    .line-preview blockquote.bq-nested { border-left: 3px solid var(--text-muted); margin: 2px 0 2px 4px; }
+    .line-preview hr { border: none; border-top: 1px solid var(--border); margin: 0.8em 0; }
+    .line-preview del { color: var(--text-muted); }
     .line-preview img { max-width: 100%; border-radius: 8px; }
     .line-preview ul, .line-preview ol { margin: 0; padding-left: 0; list-style: none; }
     .line-preview li { margin: 0; line-height: 1.7; }
@@ -155,18 +202,18 @@
     /* Checklist in preview */
     .line-preview input[type="checkbox"] {
       appearance: none; -webkit-appearance: none;
-      width: 18px; height: 18px; border: 2px solid #414868; border-radius: 4px;
+      width: 18px; height: 18px; border: 2px solid var(--border); border-radius: 4px;
       background: transparent; cursor: pointer; vertical-align: middle;
       margin-right: 6px; position: relative; top: -1px; display: inline-block;
     }
     .line-preview input[type="checkbox"]:checked {
-      background: #9ece6a; border-color: #9ece6a;
+      background: var(--green); border-color: var(--green);
     }
     .line-preview input[type="checkbox"]:checked::after {
-      content: '✓'; color: #1a1b26; font-size: 12px; font-weight: bold;
+      content: '✓'; color: var(--bg); font-size: 12px; font-weight: bold;
       position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
     }
-    .task-checked { color: #9ece6a; text-decoration: line-through; }
+    .task-checked { color: var(--green); text-decoration: line-through; }
 
     /* Indented list items */
     .list-indent { padding-left: 1.5em; }
@@ -175,35 +222,35 @@
 
     /* Code block lines */
     .code-block-line .line-preview {
-      background: #24283b;
+      background: var(--surface);
       font-family: 'JetBrains Mono', monospace;
       font-size: 13px;
       padding: 0 16px;
       line-height: 1.5;
-      color: #a9b1d6;
+      color: var(--text);
     }
     .code-block-start .line-preview {
       border-top-left-radius: 8px;
       border-top-right-radius: 8px;
       padding-top: 12px;
-      border: 1px solid #414868;
+      border: 1px solid var(--border);
       border-bottom: none;
     }
     .code-block-mid .line-preview {
-      border-left: 1px solid #414868;
-      border-right: 1px solid #414868;
+      border-left: 1px solid var(--border);
+      border-right: 1px solid var(--border);
     }
     .code-block-end .line-preview {
       border-bottom-left-radius: 8px;
       border-bottom-right-radius: 8px;
       padding-bottom: 12px;
-      border: 1px solid #414868;
+      border: 1px solid var(--border);
       border-top: none;
     }
     .code-block-single .line-preview {
       border-radius: 8px;
       padding: 12px 16px;
-      border: 1px solid #414868;
+      border: 1px solid var(--border);
     }
     .code-block-bar {
       display: flex; align-items: center; justify-content: space-between;
@@ -270,15 +317,15 @@
     .table-component { margin: 0.5em 0; position: relative; }
     .table-component table { 
       border-collapse: collapse; width: 100%; table-layout: fixed;
-      border: 1px solid #414868;
+      border: 1px solid var(--border);
     }
     .table-component th { 
-      background: #24283b; padding: 0; text-align: left; 
-      border: 1px solid #414868; font-weight: 600; color: #c0caf5;
+      background: var(--surface); padding: 0; text-align: left; 
+      border: 1px solid var(--border); font-weight: 600; color: var(--text-bright);
       position: relative;
     }
     .table-component td { 
-      padding: 0; border: 1px solid #414868; position: relative;
+      padding: 0; border: 1px solid var(--border); position: relative;
     }
     .table-component th .cell-display,
     .table-component td .cell-display {
@@ -291,40 +338,40 @@
     }
     .table-component .cell-input {
       width: 100%; padding: 6px 10px; background: rgba(122, 162, 247, 0.08);
-      color: #c0caf5; border: none; outline: none;
+      color: var(--text-bright); border: none; outline: none;
       font-family: 'JetBrains Mono', monospace; font-size: 13px;
       line-height: 1.5; min-height: 32px;
       resize: none; overflow: auto; white-space: pre-wrap;
     }
     .table-component .cell-input:focus {
       background: rgba(122, 162, 247, 0.12);
-      box-shadow: inset 0 0 0 1px #7aa2f7;
+      box-shadow: inset 0 0 0 1px var(--accent);
     }
     /* Add column button */
     .table-add-col {
       position: absolute; right: -28px; top: 0;
       width: 24px; height: 100%; background: none; border: none;
-      color: #565f89; cursor: pointer; font-size: 16px;
+      color: var(--text-muted); cursor: pointer; font-size: 16px;
       display: flex; align-items: center; justify-content: center;
       opacity: 0; transition: opacity 0.15s;
       border-radius: 0 6px 6px 0;
     }
     .table-component:hover .table-add-col { opacity: 1; }
-    .table-add-col:hover { background: rgba(122, 162, 247, 0.15); color: #7aa2f7; }
+    .table-add-col:hover { background: rgba(122, 162, 247, 0.15); color: var(--accent); }
     /* Add row button */
     .table-add-row {
-      width: 100%; height: 24px; background: none; border: 1px dashed #414868;
-      border-top: none; color: #565f89; cursor: pointer; font-size: 14px;
+      width: 100%; height: 24px; background: none; border: 1px dashed var(--border);
+      border-top: none; color: var(--text-muted); cursor: pointer; font-size: 14px;
       display: flex; align-items: center; justify-content: center;
       opacity: 0; transition: opacity 0.15s; border-radius: 0 0 6px 6px;
     }
     .table-component:hover .table-add-row { opacity: 1; }
-    .table-add-row:hover { background: rgba(122, 162, 247, 0.08); color: #7aa2f7; }
+    .table-add-row:hover { background: rgba(122, 162, 247, 0.08); color: var(--accent); }
     /* Delete column/row buttons */
     .col-delete {
       position: absolute; top: -20px; left: 50%; transform: translateX(-50%);
-      width: 18px; height: 18px; background: #f7768e; border: none; border-radius: 50%;
-      color: #1a1b26; font-size: 10px; cursor: pointer; display: flex;
+      width: 18px; height: 18px; background: var(--red); border: none; border-radius: 50%;
+      color: var(--bg); font-size: 10px; cursor: pointer; display: flex;
       align-items: center; justify-content: center; opacity: 0; transition: opacity 0.15s;
       z-index: 5;
     }
@@ -332,8 +379,8 @@
     .table-component th:hover .col-delete { opacity: 1; }
     .row-delete {
       position: absolute; left: -22px; top: 50%; transform: translateY(-50%);
-      width: 18px; height: 18px; background: #f7768e; border: none; border-radius: 50%;
-      color: #1a1b26; font-size: 10px; cursor: pointer; display: flex;
+      width: 18px; height: 18px; background: var(--red); border: none; border-radius: 50%;
+      color: var(--bg); font-size: 10px; cursor: pointer; display: flex;
       align-items: center; justify-content: center; opacity: 0; transition: opacity 0.15s;
     }
     .table-component:hover tr:hover .row-delete { opacity: 1; }
@@ -342,12 +389,12 @@
     .collapse-toggle {
       position: absolute; left: -24px; top: 4px;
       width: 20px; height: 20px; background: none; border: none;
-      color: #565f89; cursor: pointer; font-size: 12px;
+      color: var(--text-muted); cursor: pointer; font-size: 12px;
       display: flex; align-items: center; justify-content: center;
       border-radius: 4px; opacity: 0; transition: opacity 0.15s;
     }
     .line:hover .collapse-toggle { opacity: 1; }
-    .collapse-toggle:hover { background: rgba(122, 162, 247, 0.15); color: #a9b1d6; }
+    .collapse-toggle:hover { background: rgba(122, 162, 247, 0.15); color: var(--text); }
 
     /* Editable line */
     .line-editable {
@@ -356,8 +403,8 @@
       font-family: 'JetBrains Mono', monospace;
       font-size: 14px;
       line-height: 1.7;
-      color: #c0caf5;
-      caret-color: #7aa2f7;
+      color: var(--text-bright);
+      caret-color: var(--accent);
       white-space: pre-wrap;
       word-wrap: break-word;
       min-height: 1.4em;
@@ -381,25 +428,25 @@
 
     /* Syntax-aware edit mode styles for common block types */
     .line-editable.edit-list, .line-editable.edit-checklist { padding-left: 0.15em; }
-    .line-editable.edit-quote { border-left: 3px solid #565f89; padding-left: 0.6em; color: #bb9af7; }
-    .line-editable.edit-codefence, .line-editable.edit-table { font-family: 'JetBrains Mono', monospace; color: #7dcfff; }
+    .line-editable.edit-quote { border-left: 3px solid var(--text-muted); padding-left: 0.6em; color: var(--accent-2); }
+    .line-editable.edit-codefence, .line-editable.edit-table { font-family: 'JetBrains Mono', monospace; color: var(--cyan); }
 
     /* Scrollbar */
     ::-webkit-scrollbar { width: 8px; }
     ::-webkit-scrollbar-track { background: transparent; }
-    ::-webkit-scrollbar-thumb { background: #414868; border-radius: 4px; }
-    ::-webkit-scrollbar-thumb:hover { background: #565f89; }
+    ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 4px; }
+    ::-webkit-scrollbar-thumb:hover { background: var(--text-muted); }
 
     /* Footer */
     #footer {
       position: fixed; bottom: 0; left: 0; right: 0;
       display: flex; justify-content: center; padding: 12px;
-      font-size: 11px; color: #565f89; gap: 16px;
-      background: linear-gradient(transparent, #1a1b26 40%);
+      font-size: 11px; color: var(--text-muted); gap: 16px;
+      background: linear-gradient(transparent, var(--bg) 40%);
       pointer-events: none;
     }
-    #footer a { color: #565f89; text-decoration: none; pointer-events: auto; }
-    #footer a:hover { color: #7aa2f7; }
+    #footer a { color: var(--text-muted); text-decoration: none; pointer-events: auto; }
+    #footer a:hover { color: var(--accent); }
     #shortcutsBtn {
       background: transparent; border: 1px solid #414868; color: #565f89;
       width: 18px; height: 18px; border-radius: 50%; font-size: 11px; line-height: 1;
@@ -434,8 +481,8 @@
     /* Toast */
     .toast {
       position: fixed; bottom: 40px; left: 50%; transform: translateX(-50%);
-      background: #24283b; color: #9ece6a; padding: 8px 20px; border-radius: 8px;
-      font-size: 13px; border: 1px solid #414868; z-index: 200;
+      background: var(--surface); color: var(--green); padding: 8px 20px; border-radius: 8px;
+      font-size: 13px; border: 1px solid var(--border); z-index: 200;
       animation: fadeInUp 0.2s ease, fadeOut 0.3s ease 1.5s forwards;
     }
     @keyframes fadeInUp { from { opacity: 0; transform: translateX(-50%) translateY(10px); } to { opacity: 1; transform: translateX(-50%) translateY(0); } }
@@ -443,13 +490,13 @@
 
     /* Empty state */
     #emptyState {
-      text-align: center; padding: 120px 20px; color: #565f89;
+      text-align: center; padding: 120px 20px; color: var(--text-muted);
     }
-    #emptyState h2 { color: #a9b1d6; font-size: 1.3em; margin-bottom: 8px; }
+    #emptyState h2 { color: var(--text); font-size: 1.3em; margin-bottom: 8px; }
     #emptyState p { font-size: 14px; }
     #emptyState kbd {
-      background: #24283b; padding: 2px 8px; border-radius: 4px;
-      border: 1px solid #414868; font-size: 12px; color: #a9b1d6;
+      background: var(--surface); padding: 2px 8px; border-radius: 4px;
+      border: 1px solid var(--border); font-size: 12px; color: var(--text);
     }
     /* Print styles for PDF export */
     @media print {
@@ -585,6 +632,10 @@
         <!-- Share -->
         <button class="tool-btn" aria-label="Share" onclick="shareDoc()" title="Copy Share Link">
           <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/></svg>
+        </button>
+        <!-- Theme toggle -->
+        <button class="tool-btn" onclick="toggleTheme()" aria-label="Toggle light/dark theme" title="Toggle theme">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
         </button>
         <!-- Clear -->
         <button class="tool-btn" aria-label="Clear" onclick="clearDoc()" title="Clear Document">
@@ -2242,6 +2293,20 @@
       collapsedHeadings.clear();
       saveToUrl();
       render();
+    }
+
+    // ========== Theme ==========
+    function applyTheme(t) {
+      if (t === 'dark') document.documentElement.setAttribute('data-theme', 'dark');
+      else document.documentElement.removeAttribute('data-theme');
+    }
+    function currentTheme() {
+      return document.documentElement.getAttribute('data-theme') === 'dark' ? 'dark' : 'light';
+    }
+    function toggleTheme() {
+      const next = currentTheme() === 'dark' ? 'light' : 'dark';
+      try { localStorage.setItem('theme', next); } catch (e) {}
+      applyTheme(next);
     }
 
     // ========== Keyboard shortcut help overlay ==========
