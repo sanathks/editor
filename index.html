@@ -419,6 +419,31 @@
     .collapse-toggle:hover { background: rgba(122, 162, 247, 0.15); color: var(--text); }
 
     /* Editable line */
+    /* Content-first chrome: dim the toolbar until the user reaches for it. */
+    #mainToolbar { opacity: 0.28; transition: opacity 0.2s ease; }
+    header:hover #mainToolbar, #mainToolbar:focus-within { opacity: 1; }
+
+    /* Empty focused line placeholder (Notion feel). */
+    .line-editable:empty::before {
+      content: attr(data-placeholder);
+      color: #565f89;
+      pointer-events: none;
+    }
+
+    /* Medium-style selection bubble. */
+    #selBubble {
+      position: fixed; z-index: 200; display: none; gap: 2px; padding: 4px;
+      background: #24283b; border: 1px solid #414868; border-radius: 8px;
+      box-shadow: 0 6px 20px rgba(0,0,0,0.4);
+    }
+    #selBubble.show { display: flex; }
+    #selBubble button {
+      background: transparent; border: none; color: #a9b1d6; cursor: pointer;
+      width: 30px; height: 30px; border-radius: 6px; font-size: 14px;
+      display: flex; align-items: center; justify-content: center;
+    }
+    #selBubble button:hover { background: #414868; color: #c0caf5; }
+
     .line-editable {
       outline: none;
       background: transparent;
@@ -558,7 +583,7 @@
     </div>
     
     <div class="flex-1 flex justify-center" style="pointer-events:auto">
-      <div class="flex items-center gap-1 bg-storm-bg2 rounded-lg p-1 shadow-lg" style="border:1px solid rgba(255,255,255,0.1)">
+      <div id="mainToolbar" class="flex items-center gap-1 bg-storm-bg2 rounded-lg p-1 shadow-lg" style="border:1px solid rgba(255,255,255,0.1)">
         <!-- My documents -->
         <button class="tool-btn" onclick="toggleDocsPanel()" aria-label="My documents" title="My documents">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></svg>
@@ -690,6 +715,15 @@
   <main id="main" class="flex-1 overflow-y-auto" onclick="handleMainClick(event)" style="padding-top:0;cursor:text">
     <div id="editor"></div>
   </main>
+
+  <!-- Medium-style selection bubble -->
+  <div id="selBubble" role="toolbar" aria-label="Format selection">
+    <button onmousedown="bubbleAction(event, '**')" aria-label="Bold" title="Bold"><b>B</b></button>
+    <button onmousedown="bubbleAction(event, '*')" aria-label="Italic" title="Italic"><i>I</i></button>
+    <button onmousedown="bubbleAction(event, '~~')" aria-label="Strikethrough" title="Strikethrough"><s>S</s></button>
+    <button onmousedown="bubbleAction(event, '\`')" aria-label="Inline code" title="Inline code">&lt;&gt;</button>
+    <button onmousedown="bubbleLink(event)" aria-label="Link" title="Link">&#128279;</button>
+  </div>
 
   <!-- My documents panel -->
   <div id="docsPanel" aria-label="My documents">
@@ -1196,7 +1230,7 @@
         }
 
         if (isEditing) {
-          html += `<div class="line-editable${getEditingClass(line)}" id="lineInput" contenteditable="true" data-line="${i}">${escapeHtml(line)}</div>`;
+          html += `<div class="line-editable${getEditingClass(line)}" id="lineInput" contenteditable="true" data-line="${i}" data-placeholder="Type / for commands, or just start writing">${escapeHtml(line)}</div>`;
         } else {
           html += `<div class="line-preview">${renderLinePreview(line, i)}</div>`;
         }
@@ -2333,6 +2367,41 @@
       saveToUrl();
       render();
     }
+
+    // ========== Selection bubble (Medium-style inline formatting) ==========
+    function updateSelectionBubble() {
+      const bubble = document.getElementById('selBubble');
+      const input = document.getElementById('lineInput');
+      const sel = window.getSelection();
+      if (!input || !sel || sel.isCollapsed || !sel.rangeCount) { bubble.classList.remove('show'); return; }
+      const range = sel.getRangeAt(0);
+      if (!input.contains(range.commonAncestorContainer)) { bubble.classList.remove('show'); return; }
+      const rect = range.getBoundingClientRect();
+      if (!rect || (rect.width === 0 && rect.height === 0)) { bubble.classList.remove('show'); return; }
+      bubble.classList.add('show');
+      const bw = bubble.offsetWidth, bh = bubble.offsetHeight;
+      let top = rect.top - bh - 8;
+      if (top < 4) top = rect.bottom + 8;        // flip below if no room above
+      let left = rect.left + rect.width / 2 - bw / 2;
+      left = Math.max(8, Math.min(left, window.innerWidth - bw - 8));
+      bubble.style.top = top + 'px';
+      bubble.style.left = left + 'px';
+    }
+    function hideSelectionBubble() { document.getElementById('selBubble').classList.remove('show'); }
+
+    function bubbleAction(e, wrapper) {
+      e.preventDefault();   // keep the selection in the contenteditable
+      wrapSelection(wrapper);
+      hideSelectionBubble();
+    }
+    function bubbleLink(e) {
+      e.preventDefault();
+      insertLink();
+      hideSelectionBubble();
+    }
+    document.addEventListener('selectionchange', updateSelectionBubble);
+    // Reposition/hide on scroll of the writing area.
+    document.addEventListener('scroll', () => { if (document.getElementById('selBubble').classList.contains('show')) updateSelectionBubble(); }, true);
 
     // ========== Reading typography (font + size) ==========
     const READING_FONTS = {
