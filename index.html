@@ -185,6 +185,20 @@
       padding: 12px 16px;
       border: 1px solid #414868;
     }
+    .code-block-bar {
+      display: flex; align-items: center; justify-content: space-between;
+      gap: 8px; margin-bottom: 4px;
+    }
+    .code-lang {
+      font-family: 'JetBrains Mono', monospace; font-size: 11px;
+      text-transform: uppercase; letter-spacing: 0.05em; color: #565f89;
+    }
+    .code-copy-btn {
+      background: #24283b; border: 1px solid #414868; color: #a9b1d6;
+      font-size: 11px; padding: 2px 8px; border-radius: 4px; cursor: pointer;
+      transition: all 0.15s;
+    }
+    .code-copy-btn:hover { background: #414868; color: #c0caf5; }
 
     /* Interactive table styles */
     .table-component { margin: 0.5em 0; position: relative; }
@@ -758,8 +772,14 @@
             const codeLines = lines.slice(codeRange.start, codeRange.end + 1);
             const lang = (lines[codeRange.start].match(/^```(\w*)/) || [])[1] || '';
             const codeContent = codeLines.slice(1, -1).join('\n');
-            html += `<div class="line" data-line="${codeRange.start}" data-code-end="${codeRange.end}" onclick="startEditLine(${codeRange.start}, event)">`;
-            html += `<div class="line-preview"><pre><code>${escapeHtml(codeContent)}</code></pre></div>`;
+            html += `<div class="line code-block" data-line="${codeRange.start}" data-code-end="${codeRange.end}" onclick="startEditLine(${codeRange.start}, event)">`;
+            html += `<div class="line-preview">`;
+            html += `<div class="code-block-bar">`;
+            html += `<span class="code-lang">${lang ? escapeHtml(lang) : ''}</span>`;
+            html += `<button class="code-copy-btn" type="button" aria-label="Copy code" onclick="copyCodeBlock(${codeRange.start}, ${codeRange.end}, event)">Copy</button>`;
+            html += `</div>`;
+            html += `<pre><code>${escapeHtml(codeContent)}</code></pre>`;
+            html += `</div>`;
             html += `</div>`;
             i = codeRange.end + 1;
             continue;
@@ -1730,6 +1750,13 @@
       collapsedHeadings.clear();
       saveToUrl();
       render();
+    }
+
+    function copyCodeBlock(start, end, e) {
+      if (e) e.stopPropagation(); // don't fall through to click-to-edit
+      // Copy the raw source lines between the fences — exact text, no HTML entities.
+      const code = lines.slice(start + 1, end).join('\n');
+      navigator.clipboard.writeText(code).then(() => showToast('Copied'));
     }
 
     function showToast(msg) {
