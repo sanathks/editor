@@ -11,6 +11,7 @@
   <link rel="apple-touch-icon" sizes="180x180" href="/resources/icons/apple-touch-icon.png">
   <script src="https://cdn.tailwindcss.com"></script>
   <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/dompurify@3.2.4/dist/purify.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/lz-string@1.5.0/libs/lz-string.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/html2pdf.js@0.10.1/dist/html2pdf.bundle.min.js"></script>
   <script>
@@ -501,8 +502,13 @@
     marked.setOptions({ gfm: true, breaks: false });
 
     function renderInline(text) {
-      // Use marked's lexer for inline rendering
-      return marked.parseInline(text);
+      // Render inline markdown, then sanitize: documents load from untrusted
+      // #doc= share links, and marked passes raw HTML through, so a crafted link
+      // (e.g. <img onerror>, <script>, javascript: hrefs) would otherwise execute
+      // when written into editor.innerHTML. DOMPurify neutralizes that while
+      // keeping legitimate formatting (bold/italic/links/code). This is the single
+      // choke point for all rendered inline content — line previews and table cells.
+      return DOMPurify.sanitize(marked.parseInline(text));
     }
 
     function classifyLine(text) {
