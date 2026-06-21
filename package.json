@@ -1,0 +1,13 @@
+{
+  "name": "editor",
+  "version": "1.0.0",
+  "description": "Single-file line-level markdown editor. App is index.html; this package only exists for the test harness.",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "test": "node test/regression.mjs"
+  },
+  "devDependencies": {
+    "playwright": "^1.49.0"
+  }
+}

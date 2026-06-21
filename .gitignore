@@ -1,2 +1,6 @@
 # Local Netlify folder
 .netlify
+
+# Test harness
+node_modules
+test-results
