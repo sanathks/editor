@@ -3,15 +3,24 @@
 
 import { freshPage, group, check } from '../harness.mjs';
 
-// Read the rendered ordered-list numbers (the "N." prefix spans).
+// Read the displayed ordered-list numbers. Since #12 ("semantic lists") ordered
+// lists now render as real <ol start="N"><li>…</li></ol>, the displayed number for
+// each item is (its <ol>'s start) + (its index among that <ol>'s direct <li>
+// children). Walk every <li> in document order and compute that, skipping <ul>
+// items (unordered, no number). This reproduces the same sequences #8 specified
+// (1,2,3 / restart / independent nesting / explicit start) against the shipped DOM.
 async function renderedNumbers(page, arr) {
   return page.evaluate((a) => {
     lines = a; editingLine = -1; window.render();
-    // Numbered items render as <div ...><span>N.</span>content</div>; collect the spans
-    // whose text matches /^\d+\.$/.
-    return [...document.querySelectorAll('#editor .line-preview div > span')]
-      .map(s => s.textContent.trim())
-      .filter(t => /^\d+\.$/.test(t));
+    const out = [];
+    for (const li of document.querySelectorAll('#editor li')) {
+      const ol = li.parentElement;
+      if (!ol || ol.tagName !== 'OL') continue;            // unordered item → no number
+      const start = parseInt(ol.getAttribute('start') || '1', 10);
+      const idx = [...ol.children].filter(c => c.tagName === 'LI').indexOf(li);
+      out.push(`${start + idx}.`);
+    }
+    return out;
   }, arr);
 }
 
