@@ -57,7 +57,12 @@ group('docs: panel lists saved docs; open loads into the editor');
     currentDocId = null;
     lines = [];
   });
+  // autosaveNow() and refreshDocsList() both write/read IndexedDB asynchronously
+  // without being awaited, so wait for the two writes to commit, then for the
+  // panel's async render to populate the list — otherwise this races (flaky).
+  await page.waitForFunction(async () => (await idbGetAll()).length >= 2, null, { timeout: 5000 });
   await page.evaluate(() => openDocsPanel());
+  await page.waitForFunction(() => document.querySelectorAll('#docsList .doc-title').length >= 2, null, { timeout: 5000 });
   const listed = await page.evaluate(() => [...document.querySelectorAll('#docsList .doc-title')].map(e => e.textContent));
   check('both docs listed', listed.includes('Alpha doc') && listed.includes('Beta doc'), listed.join(' | '));
 
