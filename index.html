@@ -487,6 +487,8 @@
 
   <!-- Footer -->
   <div id="footer">
+    <span id="docStats">0 words</span>
+    <span>·</span>
     <span>Editor</span>
     <span>-</span>
     <a href="https://sanath.dev" target="_blank">sanath.dev</a>
@@ -724,6 +726,7 @@
 
       if (lines.length === 0 && editingLine < 0) {
         editor.innerHTML = '<div style="text-align:center;padding:120px 20px;color:#565f89;"><h2 style="color:#a9b1d6;font-size:1.3em;margin-bottom:8px;">Start writing</h2><p style="font-size:14px;">Click anywhere to begin. Your document is stored in the URL.</p></div>';
+        updateStats();
         return;
       }
 
@@ -804,6 +807,7 @@
       }
 
       editor.innerHTML = html;
+      updateStats();
 
       // Focus editable if editing
       if (editingLine >= 0) {
@@ -1364,6 +1368,7 @@
       if (e.target.id === 'lineInput' && editingLine >= 0) {
         lines[editingLine] = e.target.textContent;
         updateEditingVisualState(e.target, e.target.textContent);
+        updateStats();
       }
     });
 
@@ -1730,6 +1735,23 @@
       collapsedHeadings.clear();
       saveToUrl();
       render();
+    }
+
+    // Live footer stats: words / chars / reading time. Words skip fenced code.
+    function updateStats() {
+      const el = document.getElementById('docStats');
+      if (!el) return;
+      let inFence = false, words = 0;
+      for (const line of lines) {
+        if (/^```/.test(line)) { inFence = !inFence; continue; }
+        if (inFence) continue;
+        const m = line.trim().match(/\S+/g);
+        if (m) words += m.length;
+      }
+      const chars = lines.join('\n').length;
+      if (words === 0 && chars === 0) { el.textContent = '0 words'; return; }
+      const mins = Math.max(1, Math.ceil(words / 200));
+      el.textContent = `${words.toLocaleString()} words · ${chars.toLocaleString()} chars · ~${mins} min read`;
     }
 
     function showToast(msg) {
