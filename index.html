@@ -1150,135 +1150,144 @@
     }
 
     // ========== Rendering ==========
-    function render() {
-      const editor = document.getElementById('editor');
+    const EMPTY_STATE_HTML = '<div style="text-align:center;padding:120px 20px;color:#565f89;"><h2 style="color:#a9b1d6;font-size:1.3em;margin-bottom:8px;">Start writing</h2><p style="font-size:14px;">Click anywhere to begin. Your document is stored in the URL.</p></div>';
 
-      if (lines.length === 0 && editingLine < 0) {
-        editor.innerHTML = '<div style="text-align:center;padding:120px 20px;color:#565f89;"><h2 style="color:#a9b1d6;font-size:1.3em;margin-bottom:8px;">Start writing</h2><p style="font-size:14px;">Click anywhere to begin. Your document is stored in the URL.</p></div>';
-        updateStats();
-        return;
-      }
+    // Cache of the last render for incremental patching. { structSig, texts, editingLine }
+    let _rendered = null;
 
-      _orderedNums = computeOrderedNumbers();
+    // Ordered list of render "units": a single line ({t:'line',i}) or a grouped
+    // block ({t:'table'|'code'|'bq'|'list', s, e}). Whether a block is grouped
+    // depends on editingLine (editing inside a block breaks it into line units),
+    // so the unit list inherently encodes structure + edit-driven structure changes.
+    // Mirrors the branching render() used to do inline.
+    function computeUnits() {
       const codeRanges = getCodeBlockRanges();
       const tableRanges = getTableRanges();
       const bqRanges = getBlockquoteRanges();
       const listRanges = getListRanges();
       const hiddenLines = getHiddenLines();
-
-      let html = '';
+      const units = [];
       let i = 0;
       while (i < lines.length) {
         if (hiddenLines.has(i)) { i++; continue; }
-
-        // Check if this is part of a table range - render interactive table
         const tableRange = isInRange(i, tableRanges);
-        if (tableRange && i === tableRange.start) {
-          html += renderInteractiveTable(tableRange.start, tableRange.end);
-          i = tableRange.end + 1;
-          continue;
-        } else if (tableRange && i > tableRange.start) {
-          // Skip non-first lines of table (already rendered)
-          i++;
-          continue;
-        }
-
-        // Check if this is part of a code block range
+        if (tableRange && i === tableRange.start) { units.push({ t: 'table', s: tableRange.start, e: tableRange.end }); i = tableRange.end + 1; continue; }
+        if (tableRange && i > tableRange.start) { i++; continue; }
         const codeRange = isInRange(i, codeRanges);
-        if (codeRange) {
-          const editingInCode = editingLine >= codeRange.start && editingLine <= codeRange.end;
-          if (!editingInCode) {
-            // Render code block as a group
-            const codeLines = lines.slice(codeRange.start, codeRange.end + 1);
-            const lang = (lines[codeRange.start].match(/^```(\w*)/) || [])[1] || '';
-            const codeContent = codeLines.slice(1, -1).join('\n');
-            // Combined: #4's code-block bar (language label + copy button) wrapping
-            // #10's syntax-highlighted body (<code class="hljs">…highlightCode…).
-            html += `<div class="line code-block" data-line="${codeRange.start}" data-code-end="${codeRange.end}" onclick="startEditLine(${codeRange.start}, event)">`;
-            html += `<div class="line-preview">`;
-            html += `<div class="code-block-bar">`;
-            html += `<span class="code-lang">${lang ? escapeHtml(lang) : ''}</span>`;
-            html += `<button class="code-copy-btn" type="button" aria-label="Copy code" onclick="copyCodeBlock(${codeRange.start}, ${codeRange.end}, event)">Copy</button>`;
-            html += `</div>`;
-            html += `<pre><code class="hljs">${highlightCode(codeContent, lang)}</code></pre>`;
-            html += `</div>`;
-            html += `</div>`;
-            i = codeRange.end + 1;
-            continue;
-          }
-        }
-
-        // Group consecutive quoted lines into one blockquote block. While a line
-        // inside the run is being edited, fall through to per-line rendering so the
-        // editing line keeps its normal contenteditable.
+        if (codeRange && !(editingLine >= codeRange.start && editingLine <= codeRange.end)) { units.push({ t: 'code', s: codeRange.start, e: codeRange.end }); i = codeRange.end + 1; continue; }
         const bqRange = isInRange(i, bqRanges);
-        if (bqRange && i === bqRange.start) {
-          const editingInBq = editingLine >= bqRange.start && editingLine <= bqRange.end;
-          if (!editingInBq) {
-            html += renderBlockquoteGroup(bqRange.start, bqRange.end);
-            i = bqRange.end + 1;
-            continue;
-          }
-        }
-
-        // Group consecutive list items into real nested <ul>/<ol>. While a line in
-        // the run is being edited, fall through to per-line rendering.
+        if (bqRange && i === bqRange.start && !(editingLine >= bqRange.start && editingLine <= bqRange.end)) { units.push({ t: 'bq', s: bqRange.start, e: bqRange.end }); i = bqRange.end + 1; continue; }
         const listRange = isInRange(i, listRanges);
-        if (listRange && i === listRange.start) {
-          const editingInList = editingLine >= listRange.start && editingLine <= listRange.end;
-          if (!editingInList) {
-            html += renderListGroup(listRange.start, listRange.end);
-            i = listRange.end + 1;
-            continue;
-          }
-        }
-
-        // Single line rendering
-        const line = lines[i];
-        const isEditing = i === editingLine;
-        const isHeading = getHeadingLevel(line) > 0;
-        const isEmpty = line.trim() === '';
-
-        html += `<div class="line ${isEditing ? 'editing' : ''} ${isEmpty ? 'empty-line' : ''}" data-line="${i}" onclick="startEditLine(${i}, event)">`;
-
-        // Collapse toggle for headings
-        if (isHeading) {
-          const arrow = collapsedHeadings.has(i) ? '▸' : '▾';
-          html += `<button class="collapse-toggle" onclick="toggleCollapse(${i}, event)" title="Collapse">${arrow}</button>`;
-        }
-
-        if (isEditing) {
-          html += `<div class="line-editable${getEditingClass(line)}" id="lineInput" contenteditable="true" data-line="${i}" data-placeholder="Type / for commands, or just start writing">${escapeHtml(line)}</div>`;
-        } else {
-          html += `<div class="line-preview">${renderLinePreview(line, i)}</div>`;
-        }
-
-        html += `</div>`;
+        if (listRange && i === listRange.start && !(editingLine >= listRange.start && editingLine <= listRange.end)) { units.push({ t: 'list', s: listRange.start, e: listRange.end }); i = listRange.end + 1; continue; }
+        units.push({ t: 'line', i });
         i++;
       }
+      return units;
+    }
 
-      editor.innerHTML = html;
-      updateStats();
+    // HTML for one unit — preserves every render branch (code bar + highlight,
+    // blockquote/list groups, table, heading collapse toggle, slash placeholder).
+    function unitHtml(u) {
+      if (u.t === 'table') return renderInteractiveTable(u.s, u.e);
+      if (u.t === 'code') {
+        const codeLines = lines.slice(u.s, u.e + 1);
+        const lang = (lines[u.s].match(/^```(\w*)/) || [])[1] || '';
+        const codeContent = codeLines.slice(1, -1).join('\n');
+        return `<div class="line code-block" data-line="${u.s}" data-code-end="${u.e}" onclick="startEditLine(${u.s}, event)">`
+          + `<div class="line-preview">`
+          + `<div class="code-block-bar"><span class="code-lang">${lang ? escapeHtml(lang) : ''}</span>`
+          + `<button class="code-copy-btn" type="button" aria-label="Copy code" onclick="copyCodeBlock(${u.s}, ${u.e}, event)">Copy</button></div>`
+          + `<pre><code class="hljs">${highlightCode(codeContent, lang)}</code></pre>`
+          + `</div></div>`;
+      }
+      if (u.t === 'bq') return renderBlockquoteGroup(u.s, u.e);
+      if (u.t === 'list') return renderListGroup(u.s, u.e);
+      const i = u.i;
+      const line = lines[i];
+      const isEditing = i === editingLine;
+      const isHeading = getHeadingLevel(line) > 0;
+      const isEmpty = line.trim() === '';
+      let h = `<div class="line ${isEditing ? 'editing' : ''} ${isEmpty ? 'empty-line' : ''}" data-line="${i}" onclick="startEditLine(${i}, event)">`;
+      if (isHeading) {
+        const arrow = collapsedHeadings.has(i) ? '▸' : '▾';
+        h += `<button class="collapse-toggle" onclick="toggleCollapse(${i}, event)" title="Collapse">${arrow}</button>`;
+      }
+      if (isEditing) h += `<div class="line-editable${getEditingClass(line)}" id="lineInput" contenteditable="true" data-line="${i}" data-placeholder="Type / for commands, or just start writing">${escapeHtml(line)}</div>`;
+      else h += `<div class="line-preview">${renderLinePreview(line, i)}</div>`;
+      h += `</div>`;
+      return h;
+    }
 
-      // Focus editable if editing
-      if (editingLine >= 0) {
-        const el = document.getElementById('lineInput');
-        if (el) {
-          el.focus();
-          const textNode = el.firstChild;
-          if (textNode) {
-            const range = document.createRange();
-            const sel = window.getSelection();
-            const pos = typeof cursorPos === 'number' ? Math.min(cursorPos, textNode.length) : textNode.length;
-            range.setStart(textNode, pos);
-            range.collapse(true);
-            sel.removeAllRanges();
-            sel.addRange(range);
-            cursorPos = null;
+    // Replace a single line's DOM node in place (incremental path).
+    function patchLineNode(i) {
+      if (i < 0) return;
+      const node = document.querySelector(`#editor > .line[data-line="${i}"]`);
+      if (!node) return;
+      const tmp = document.createElement('div');
+      tmp.innerHTML = unitHtml({ t: 'line', i });
+      if (tmp.firstElementChild) node.replaceWith(tmp.firstElementChild);
+    }
+
+    function focusEditing() {
+      if (editingLine < 0) return;
+      const el = document.getElementById('lineInput');
+      if (!el) return;
+      el.focus();
+      const textNode = el.firstChild;
+      if (textNode) {
+        const range = document.createRange();
+        const sel = window.getSelection();
+        const pos = typeof cursorPos === 'number' ? Math.min(cursorPos, textNode.length) : textNode.length;
+        range.setStart(textNode, pos);
+        range.collapse(true);
+        sel.removeAllRanges();
+        sel.addRange(range);
+        cursorPos = null;
+      }
+      el.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+    }
+
+    function render() {
+      const editor = document.getElementById('editor');
+
+      if (lines.length === 0 && editingLine < 0) {
+        editor.innerHTML = EMPTY_STATE_HTML;
+        updateStats();
+        _rendered = null;
+        return;
+      }
+
+      _orderedNums = computeOrderedNumbers();
+      const units = computeUnits();
+      const structSig = JSON.stringify(units);
+
+      // Incremental: identical unit structure AND the only lines whose text changed
+      // are the editing-line transition → patch just those 1–2 nodes. Any structural
+      // change (insert/delete, collapse, group regroup, undo) falls to a full rebuild.
+      if (_rendered && _rendered.structSig === structSig && _rendered.texts.length === lines.length) {
+        const allowed = new Set([_rendered.editingLine, editingLine].filter(x => x >= 0));
+        let onlyEditingChanged = true;
+        for (let k = 0; k < lines.length; k++) {
+          if (lines[k] !== _rendered.texts[k] && !allowed.has(k)) { onlyEditingChanged = false; break; }
+        }
+        if (onlyEditingChanged) {
+          if (_rendered.editingLine !== editingLine) {
+            patchLineNode(_rendered.editingLine);
+            patchLineNode(editingLine);
+          } else if (editingLine >= 0) {
+            patchLineNode(editingLine);
           }
-          el.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+          _rendered = { structSig, texts: lines.slice(), editingLine };
+          updateStats();
+          focusEditing();
+          return;
         }
       }
+
+      editor.innerHTML = units.map(unitHtml).join('');
+      _rendered = { structSig, texts: lines.slice(), editingLine };
+      updateStats();
+      focusEditing();
     }
 
     function escapeHtml(s) {
