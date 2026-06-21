@@ -122,6 +122,9 @@
       color: #565f89; font-style: italic;
     }
     .line-preview blockquote p { margin: 0; }
+    .line-preview blockquote.bq-group { padding-top: 3px; padding-bottom: 3px; }
+    .line-preview blockquote .bq-line { margin: 0; cursor: text; }
+    .line-preview blockquote.bq-nested { border-left: 3px solid #565f89; margin: 2px 0 2px 4px; }
     .line-preview hr { border: none; border-top: 1px solid #414868; margin: 0.8em 0; }
     .line-preview del { color: #565f89; }
     .line-preview img { max-width: 100%; border-radius: 8px; }
@@ -567,8 +570,11 @@
         case 'hr':
           return '<hr>';
         case 'blockquote': {
-          const content = text.replace(/^>\s?/, '');
-          return `<blockquote><p>${renderInline(content)}</p></blockquote>`;
+          const depth = blockquoteDepth(text);
+          const inner = `<p>${renderInline(stripBlockquote(text))}</p>`;
+          return depth >= 2
+            ? `<blockquote><blockquote>${inner}</blockquote></blockquote>`
+            : `<blockquote>${inner}</blockquote>`;
         }
         case 'checklist':
         case 'checklist-indent': {
@@ -649,6 +655,47 @@
       return null;
     }
 
+    // Consecutive `>` lines form one quote block; a blank/non-quote line ends it.
+    function getBlockquoteRanges() {
+      const ranges = [];
+      let start = -1;
+      for (let i = 0; i < lines.length; i++) {
+        if (/^>/.test(lines[i])) {
+          if (start === -1) start = i;
+        } else {
+          if (start !== -1) { ranges.push([start, i - 1]); start = -1; }
+        }
+      }
+      if (start !== -1) ranges.push([start, lines.length - 1]);
+      return ranges;
+    }
+
+    // How many `>` markers a quoted line carries (`>> x` = depth 2).
+    function blockquoteDepth(text) {
+      let d = 0, s = text;
+      while (/^\s*>/.test(s)) { s = s.replace(/^\s*>\s?/, ''); d++; }
+      return d;
+    }
+    function stripBlockquote(text) {
+      let s = text;
+      while (/^\s*>/.test(s)) s = s.replace(/^\s*>\s?/, '');
+      return s;
+    }
+
+    // Render a run of quoted lines as ONE <blockquote>, each source line a
+    // clickable paragraph so per-line click-to-edit still maps to the right line.
+    // One level of `>>` nesting renders as a nested blockquote; deeper renders flat.
+    function renderBlockquoteGroup(start, end) {
+      let inner = '';
+      for (let j = start; j <= end; j++) {
+        const depth = blockquoteDepth(lines[j]);
+        const content = renderInline(stripBlockquote(lines[j])) || '&nbsp;';
+        const p = `<p class="bq-line" data-line="${j}" onclick="startEditLine(${j}, event)">${content}</p>`;
+        inner += depth >= 2 ? `<blockquote class="bq-nested">${p}</blockquote>` : p;
+      }
+      return `<div class="line" data-line="${start}"><div class="line-preview"><blockquote class="bq-group">${inner}</blockquote></div></div>`;
+    }
+
     // ========== Collapsed heading logic ==========
     function getHiddenLines() {
       const hidden = new Set();
@@ -676,6 +723,7 @@
 
       const codeRanges = getCodeBlockRanges();
       const tableRanges = getTableRanges();
+      const bqRanges = getBlockquoteRanges();
       const hiddenLines = getHiddenLines();
 
       let html = '';
@@ -708,6 +756,19 @@
             html += `<div class="line-preview"><pre><code>${escapeHtml(codeContent)}</code></pre></div>`;
             html += `</div>`;
             i = codeRange.end + 1;
+            continue;
+          }
+        }
+
+        // Group consecutive quoted lines into one blockquote block. While a line
+        // inside the run is being edited, fall through to per-line rendering so the
+        // editing line keeps its normal contenteditable.
+        const bqRange = isInRange(i, bqRanges);
+        if (bqRange && i === bqRange.start) {
+          const editingInBq = editingLine >= bqRange.start && editingLine <= bqRange.end;
+          if (!editingInBq) {
+            html += renderBlockquoteGroup(bqRange.start, bqRange.end);
+            i = bqRange.end + 1;
             continue;
           }
         }
