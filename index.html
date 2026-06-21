@@ -1469,9 +1469,42 @@
     });
 
     // Handle paste - split multi-line content into separate lines
+    // Insert a markdown image line (data URI) after the current line, or at the end.
+    function insertImageDataUri(dataUri) {
+      pushUndo();
+      const imgLine = `![pasted](${dataUri})`;
+      if (editingLine >= 0) lines.splice(editingLine + 1, 0, imgLine);
+      else lines.push(imgLine);
+      editingLine = -1;
+      saveToUrl();
+      render();
+    }
+
+    // Read an image File as a data URI and embed it (no backend). Warns if large.
+    function embedImageFile(file) {
+      if (!file) return;
+      if (file.size > 1.5 * 1024 * 1024) showToast('Large image — may bloat the share link');
+      const reader = new FileReader();
+      reader.onload = () => { if (typeof reader.result === 'string') insertImageDataUri(reader.result); };
+      reader.readAsDataURL(file);
+    }
+
     document.addEventListener('paste', e => {
+      const cd = e.clipboardData || window.clipboardData;
+
+      // Image paste: embed as an inline data URI before falling through to text.
+      if (cd && cd.items) {
+        for (const item of cd.items) {
+          if (item.kind === 'file' && item.type && item.type.startsWith('image/')) {
+            e.preventDefault();
+            embedImageFile(item.getAsFile());
+            return;
+          }
+        }
+      }
+
       const input = document.getElementById('lineInput');
-      const text = (e.clipboardData || window.clipboardData).getData('text');
+      const text = cd.getData('text');
       if (!text) return;
       
       if (!input || editingLine < 0) {
