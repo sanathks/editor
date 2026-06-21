@@ -516,7 +516,7 @@
 
     function classifyLine(text) {
       if (/^#{1,6}\s/.test(text)) return 'heading';
-      if (/^```/.test(text)) return 'codefence';
+      if (/^\s*```/.test(text)) return 'codefence';
       if (/^>\s?/.test(text)) return 'blockquote';
       if (/^[-*+]\s\[[ x]\]\s/.test(text)) return 'checklist';
       if (/^[-*+]\s/.test(text)) return 'bullet';
@@ -630,7 +630,7 @@
       const ranges = [];
       let start = -1;
       for (let i = 0; i < lines.length; i++) {
-        if (/^```/.test(lines[i])) {
+        if (/^\s*```/.test(lines[i])) {
           if (start === -1) { start = i; }
           else { ranges.push([start, i]); start = -1; }
         }
@@ -836,12 +836,25 @@
     // ========== Interactive Table ==========
     let editingCell = null; // { tableStart, row, col }
 
+    // Split a table row on UNescaped pipes; `\|` becomes a literal pipe in the cell.
+    function splitTableRow(line) {
+      const cells = [];
+      let cur = '';
+      for (let i = 0; i < line.length; i++) {
+        if (line[i] === '\\' && line[i + 1] === '|') { cur += '|'; i++; continue; }
+        if (line[i] === '|') { cells.push(cur); cur = ''; continue; }
+        cur += line[i];
+      }
+      cells.push(cur);
+      return cells;
+    }
+
     function parseTableLines(start, end) {
       const tableLines = lines.slice(start, end + 1);
       const rows = [];
       let separatorIdx = -1;
       for (let i = 0; i < tableLines.length; i++) {
-        const cells = tableLines[i].split('|').slice(1, -1).map(c => c.trim());
+        const cells = splitTableRow(tableLines[i]).slice(1, -1).map(c => c.trim());
         if (cells.length && cells.every(c => /^[-:]+$/.test(c))) {
           separatorIdx = i;
           continue;
@@ -859,7 +872,8 @@
       for (const row of rows) {
         // Pad cells
         while (row.cells.length < colCount) row.cells.push('');
-        newLines.push('| ' + row.cells.join(' | ') + ' |');
+        // Re-escape literal pipes so the row round-trips through splitTableRow.
+        newLines.push('| ' + row.cells.map(c => String(c).replace(/\|/g, '\\|')).join(' | ') + ' |');
         if (row.isHeader && !headerDone) {
           newLines.push('| ' + row.cells.map(() => '---').join(' | ') + ' |');
           headerDone = true;
@@ -1621,13 +1635,22 @@
       redoStack = [];
     }
 
+    // Drop any collapsed index that isn't actually a heading in the current lines,
+    // so undo/redo can never leave the wrong (or a non-) heading collapsed.
+    function reconcileCollapsed() {
+      for (const idx of [...collapsedHeadings]) {
+        if (idx >= lines.length || getHeadingLevel(lines[idx]) === 0) collapsedHeadings.delete(idx);
+      }
+    }
+
     function doUndo() {
       if (!undoStack.length) return;
       redoStack.push({ lines: [...lines], editing: editingLine, collapsed: new Set(collapsedHeadings) });
       const state = undoStack.pop();
       lines = state.lines;
       editingLine = -1;
-      collapsedHeadings = state.collapsed;
+      collapsedHeadings = new Set(state.collapsed);   // copy, don't alias the stack entry
+      reconcileCollapsed();
       saveToUrl();
       render();
     }
@@ -1638,7 +1661,8 @@
       const state = redoStack.pop();
       lines = state.lines;
       editingLine = -1;
-      collapsedHeadings = state.collapsed;
+      collapsedHeadings = new Set(state.collapsed);
+      reconcileCollapsed();
       saveToUrl();
       render();
     }
