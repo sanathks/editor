@@ -149,6 +149,21 @@
     }
     .reading-size-btn:hover { background: rgba(122, 162, 247, 0.15); color: #c0caf5; }
 
+    /* Slash command menu */
+    #slashMenu {
+      position: fixed; z-index: 200; display: none; min-width: 200px;
+      max-height: 280px; overflow-y: auto; padding: 6px;
+      background: #24283b; border: 1px solid #414868; border-radius: 8px;
+      box-shadow: 0 8px 24px rgba(0,0,0,0.4);
+    }
+    #slashMenu.show { display: block; }
+    .slash-item {
+      display: flex; align-items: center; gap: 8px; padding: 7px 10px;
+      border-radius: 6px; cursor: pointer; color: #a9b1d6; font-size: 13px; white-space: nowrap;
+    }
+    .slash-item .slash-hint { margin-left: auto; color: #565f89; font-size: 11px; font-family: 'JetBrains Mono', monospace; }
+    .slash-item.active, .slash-item:hover { background: rgba(122, 162, 247, 0.18); color: #c0caf5; }
+
     /* Editor area */
     #editor {
       max-width: 800px;
@@ -715,6 +730,9 @@
   <main id="main" class="flex-1 overflow-y-auto" onclick="handleMainClick(event)" style="padding-top:0;cursor:text">
     <div id="editor"></div>
   </main>
+
+  <!-- Notion-style slash command menu -->
+  <div id="slashMenu" role="listbox" aria-label="Insert block"></div>
 
   <!-- Medium-style selection bubble -->
   <div id="selBubble" role="toolbar" aria-label="Format selection">
@@ -1829,6 +1847,7 @@
       if (e.target.id === 'lineInput' && editingLine >= 0) {
         lines[editingLine] = e.target.textContent;
         updateEditingVisualState(e.target, e.target.textContent);
+        maybeSlash(e.target);
         updateStats();
       }
     });
@@ -2367,6 +2386,104 @@
       saveToUrl();
       render();
     }
+
+    // ========== Notion-style slash command menu ==========
+    let slashOpen = false, slashItems = [], slashIndex = 0;
+
+    function slashSetPrefix(prefix) {
+      pushUndo();
+      lines[editingLine] = prefix;   // replace the /query line
+      cursorPos = prefix.length;
+      closeSlash(); saveToUrl(); render();
+    }
+    function slashCodeBlock() {
+      pushUndo();
+      const idx = editingLine;
+      lines.splice(idx, 1, '```', '', '```');
+      editingLine = idx + 1; cursorPos = 0;
+      closeSlash(); saveToUrl(); render();
+      requestAnimationFrame(() => { const i = document.getElementById('lineInput'); if (i) i.focus(); });
+    }
+    function slashTable() {
+      pushUndo();
+      const idx = editingLine;
+      lines.splice(idx, 1, '| Header | Header |', '| --- | --- |', '|  |  |');
+      editingLine = -1;
+      editingCell = { tableStart: idx, tableEnd: idx + 2, row: 1, col: 0 };
+      closeSlash(); saveToUrl(); render();
+      setTimeout(() => { const i = document.getElementById('cellInput'); if (i) { i.focus(); i.select(); } }, 0);
+    }
+    function slashLink() {
+      lines[editingLine] = '';
+      closeSlash(); render();
+      requestAnimationFrame(() => { const i = document.getElementById('lineInput'); if (i) i.focus(); insertLink(); });
+    }
+
+    const SLASH_COMMANDS = [
+      { label: 'Heading 1', hint: '#', keys: 'h1 heading title big', run: () => slashSetPrefix('# ') },
+      { label: 'Heading 2', hint: '##', keys: 'h2 heading subtitle', run: () => slashSetPrefix('## ') },
+      { label: 'Heading 3', hint: '###', keys: 'h3 heading', run: () => slashSetPrefix('### ') },
+      { label: 'Bullet list', hint: '-', keys: 'bullet list unordered ul', run: () => slashSetPrefix('- ') },
+      { label: 'Numbered list', hint: '1.', keys: 'numbered list ordered ol', run: () => slashSetPrefix('1. ') },
+      { label: 'Checklist', hint: '[ ]', keys: 'checklist todo task check', run: () => slashSetPrefix('- [ ] ') },
+      { label: 'Quote', hint: '>', keys: 'quote blockquote', run: () => slashSetPrefix('> ') },
+      { label: 'Code block', hint: '```', keys: 'code codeblock pre snippet', run: () => slashCodeBlock() },
+      { label: 'Table', hint: '|', keys: 'table grid', run: () => slashTable() },
+      { label: 'Divider', hint: '---', keys: 'divider hr rule horizontal line', run: () => slashSetPrefix('---') },
+      { label: 'Link', hint: 'url', keys: 'link url href anchor', run: () => slashLink() },
+    ];
+
+    function maybeSlash(input) {
+      const text = input.textContent;
+      // Trigger only when '/' is the first char and the query has no space.
+      if (text[0] === '/' && !/\s/.test(text)) openSlash(text.slice(1));
+      else closeSlash();
+    }
+    function openSlash(query) {
+      const q = query.toLowerCase();
+      slashItems = SLASH_COMMANDS.filter(c => !q || c.label.toLowerCase().includes(q) || c.keys.includes(q));
+      if (!slashItems.length) { closeSlash(); return; }
+      slashOpen = true; slashIndex = 0;
+      renderSlashMenu(); positionSlashMenu();
+    }
+    function closeSlash() {
+      slashOpen = false;
+      document.getElementById('slashMenu').classList.remove('show');
+    }
+    function renderSlashMenu() {
+      const menu = document.getElementById('slashMenu');
+      menu.innerHTML = slashItems.map((c, i) =>
+        `<div class="slash-item${i === slashIndex ? ' active' : ''}" role="option" data-i="${i}" onmousedown="slashPick(event, ${i})">${escapeHtml(c.label)}<span class="slash-hint">${escapeHtml(c.hint)}</span></div>`
+      ).join('');
+      menu.classList.add('show');
+    }
+    function positionSlashMenu() {
+      const input = document.getElementById('lineInput');
+      const menu = document.getElementById('slashMenu');
+      if (!input) return;
+      const rect = input.getBoundingClientRect();
+      let top = rect.bottom + 4;
+      if (top + menu.offsetHeight > window.innerHeight - 8) top = rect.top - menu.offsetHeight - 4;
+      menu.style.top = top + 'px';
+      menu.style.left = Math.min(rect.left, window.innerWidth - menu.offsetWidth - 8) + 'px';
+    }
+    function slashPick(e, i) { if (e) e.preventDefault(); selectSlash(i); }
+    function selectSlash(i) {
+      const cmd = slashItems[i];
+      if (cmd) cmd.run();
+    }
+    // Capture-phase so menu navigation wins over the editor's own key handlers.
+    document.addEventListener('keydown', e => {
+      if (!slashOpen) return;
+      if (e.key === 'ArrowDown') { e.preventDefault(); e.stopPropagation(); slashIndex = (slashIndex + 1) % slashItems.length; renderSlashMenu(); }
+      else if (e.key === 'ArrowUp') { e.preventDefault(); e.stopPropagation(); slashIndex = (slashIndex - 1 + slashItems.length) % slashItems.length; renderSlashMenu(); }
+      else if (e.key === 'Enter' || e.key === 'Tab') { e.preventDefault(); e.stopPropagation(); selectSlash(slashIndex); }
+      else if (e.key === 'Escape') { e.preventDefault(); e.stopPropagation(); closeSlash(); }
+    }, true);
+    // Close on blur of the editing line (deferred so a click on the menu lands first).
+    document.addEventListener('focusout', e => {
+      if (e.target && e.target.id === 'lineInput') setTimeout(closeSlash, 150);
+    });
 
     // ========== Selection bubble (Medium-style inline formatting) ==========
     function updateSelectionBubble() {
