@@ -14,6 +14,8 @@
   <script src="https://cdn.jsdelivr.net/npm/dompurify@3.2.4/dist/purify.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/lz-string@1.5.0/libs/lz-string.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/html2pdf.js@0.10.1/dist/html2pdf.bundle.min.js"></script>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/atom-one-dark.min.css">
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
   <script>
     tailwind.config = {
       theme: {
@@ -114,9 +116,19 @@
     .line-preview a { color: #7aa2f7; text-decoration: underline; }
     .line-preview strong { color: #c0caf5; font-weight: 600; }
     .line-preview em { color: #bb9af7; }
-    .line-preview code { 
-      background: #24283b; padding: 2px 6px; border-radius: 4px; 
+    .line-preview code {
+      background: #24283b; padding: 2px 6px; border-radius: 4px;
       font-family: 'JetBrains Mono', monospace; font-size: 0.85em; color: #ff9e64;
+    }
+    /* Fenced code blocks: container chrome + let highlight.js color the tokens
+       (don't apply the inline-code orange/padding to block code). */
+    .line-preview pre {
+      background: #1e2030; border: 1px solid #414868; border-radius: 8px;
+      padding: 12px 16px; overflow-x: auto; margin: 0;
+    }
+    .line-preview pre code, .line-preview pre code.hljs {
+      background: transparent; padding: 0; color: #a9b1d6;
+      font-family: 'JetBrains Mono', monospace; font-size: 0.85em;
     }
     .line-preview blockquote { 
       border-left: 3px solid #7aa2f7; padding-left: 16px;
@@ -450,7 +462,7 @@
       <div class="flex items-center gap-1 bg-storm-bg2 rounded-lg p-1 shadow-lg" style="border:1px solid rgba(255,255,255,0.1)">
         <!-- My documents -->
         <button class="tool-btn" onclick="toggleDocsPanel()" aria-label="My documents" title="My documents">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></svg>
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></svg>
         </button>
         <div class="divider"></div>
 
@@ -972,13 +984,15 @@
             const codeLines = lines.slice(codeRange.start, codeRange.end + 1);
             const lang = (lines[codeRange.start].match(/^```(\w*)/) || [])[1] || '';
             const codeContent = codeLines.slice(1, -1).join('\n');
+            // Combined: #4's code-block bar (language label + copy button) wrapping
+            // #10's syntax-highlighted body (<code class="hljs">…highlightCode…).
             html += `<div class="line code-block" data-line="${codeRange.start}" data-code-end="${codeRange.end}" onclick="startEditLine(${codeRange.start}, event)">`;
             html += `<div class="line-preview">`;
             html += `<div class="code-block-bar">`;
             html += `<span class="code-lang">${lang ? escapeHtml(lang) : ''}</span>`;
             html += `<button class="code-copy-btn" type="button" aria-label="Copy code" onclick="copyCodeBlock(${codeRange.start}, ${codeRange.end}, event)">Copy</button>`;
             html += `</div>`;
-            html += `<pre><code>${escapeHtml(codeContent)}</code></pre>`;
+            html += `<pre><code class="hljs">${highlightCode(codeContent, lang)}</code></pre>`;
             html += `</div>`;
             html += `</div>`;
             i = codeRange.end + 1;
@@ -1061,6 +1075,16 @@
 
     function escapeHtml(s) {
       return s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+    }
+    // Syntax-highlight code (highlight.js). Uses the fence language when known,
+    // autodetects otherwise; falls back to escaped plain text if hljs is missing
+    // or errors. hljs output is HTML-escaped, so it's safe to inject.
+    function highlightCode(code, lang) {
+      if (typeof hljs === 'undefined') return escapeHtml(code);
+      try {
+        if (lang && hljs.getLanguage(lang)) return hljs.highlight(code, { language: lang, ignoreIllegals: true }).value;
+        return hljs.highlightAuto(code).value;
+      } catch { return escapeHtml(code); }
     }
     function escapeAttr(s) {
       return s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
@@ -2096,6 +2120,8 @@
       wrapper.querySelectorAll('code').forEach(el => { el.style.background = '#f0f0f0'; el.style.color = '#c7254e'; });
       wrapper.querySelectorAll('pre').forEach(el => { el.style.background = '#f5f5f5'; el.style.border = '1px solid #ddd'; });
       wrapper.querySelectorAll('pre code').forEach(el => { el.style.background = 'none'; el.style.color = '#333'; });
+      // Force highlight.js token spans to dark ink so code stays legible on white.
+      wrapper.querySelectorAll('pre code *').forEach(el => { el.style.color = '#333'; });
       wrapper.querySelectorAll('blockquote').forEach(el => { el.style.borderColor = '#999'; el.style.color = '#666'; });
       wrapper.querySelectorAll('hr').forEach(el => el.style.borderColor = '#ccc');
       wrapper.querySelectorAll('h2').forEach(el => el.style.borderColor = '#ccc');
