@@ -400,6 +400,36 @@
     }
     #footer a { color: #565f89; text-decoration: none; pointer-events: auto; }
     #footer a:hover { color: #7aa2f7; }
+    #shortcutsBtn {
+      background: transparent; border: 1px solid #414868; color: #565f89;
+      width: 18px; height: 18px; border-radius: 50%; font-size: 11px; line-height: 1;
+      cursor: pointer; pointer-events: auto; padding: 0;
+    }
+    #shortcutsBtn:hover { color: #7aa2f7; border-color: #7aa2f7; }
+
+    /* Keyboard shortcut overlay */
+    #shortcutsOverlay {
+      position: fixed; inset: 0; z-index: 300; display: none;
+      align-items: center; justify-content: center;
+      background: rgba(0,0,0,0.5);
+    }
+    #shortcutsOverlay.open { display: flex; }
+    .shortcuts-card {
+      background: #24283b; border: 1px solid #414868; border-radius: 12px;
+      padding: 20px 24px; width: min(560px, 90vw); max-height: 80vh; overflow-y: auto;
+      box-shadow: 0 20px 60px rgba(0,0,0,0.5);
+    }
+    .shortcuts-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 16px; }
+    .shortcuts-head h3 { color: #c0caf5; font-size: 16px; font-weight: 600; }
+    .shortcuts-close { background: transparent; border: none; color: #565f89; font-size: 22px; cursor: pointer; line-height: 1; }
+    .shortcuts-close:hover { color: #c0caf5; }
+    .shortcuts-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px 28px; }
+    .shortcuts-group h4 { color: #7aa2f7; font-size: 12px; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 8px; }
+    .sc { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 4px 0; color: #a9b1d6; font-size: 13px; }
+    .sc kbd {
+      background: #1a1b26; border: 1px solid #414868; border-radius: 5px;
+      padding: 2px 8px; font-family: 'JetBrains Mono', monospace; font-size: 11px; color: #c0caf5; white-space: nowrap;
+    }
 
     /* Toast */
     .toast {
@@ -603,6 +633,42 @@
     <span>Editor</span>
     <span>-</span>
     <a href="https://sanath.dev" target="_blank">sanath.dev</a>
+    <span>·</span>
+    <button id="shortcutsBtn" onclick="openShortcuts()" aria-label="Keyboard shortcuts" title="Keyboard shortcuts (?)">?</button>
+  </div>
+
+  <!-- Keyboard shortcut help overlay -->
+  <div id="shortcutsOverlay" onclick="if(event.target===this)closeShortcuts()">
+    <div class="shortcuts-card" role="dialog" aria-modal="true" aria-label="Keyboard shortcuts">
+      <div class="shortcuts-head">
+        <h3>Keyboard shortcuts</h3>
+        <button class="shortcuts-close" onclick="closeShortcuts()" aria-label="Close">&times;</button>
+      </div>
+      <div class="shortcuts-grid">
+        <div class="shortcuts-group">
+          <h4>Formatting</h4>
+          <div class="sc"><span>Bold</span><kbd>⌘/Ctrl B</kbd></div>
+          <div class="sc"><span>Italic</span><kbd>⌘/Ctrl I</kbd></div>
+          <div class="sc"><span>Link</span><kbd>⌘/Ctrl K</kbd></div>
+        </div>
+        <div class="shortcuts-group">
+          <h4>History</h4>
+          <div class="sc"><span>Undo</span><kbd>⌘/Ctrl Z</kbd></div>
+          <div class="sc"><span>Redo</span><kbd>⌘/Ctrl ⇧ Z</kbd></div>
+        </div>
+        <div class="shortcuts-group">
+          <h4>Lines &amp; lists</h4>
+          <div class="sc"><span>New line / continue list</span><kbd>Enter</kbd></div>
+          <div class="sc"><span>Indent list item</span><kbd>Tab</kbd></div>
+          <div class="sc"><span>Delete selected lines</span><kbd>⌫</kbd></div>
+        </div>
+        <div class="shortcuts-group">
+          <h4>Help</h4>
+          <div class="sc"><span>This overlay</span><kbd>?</kbd></div>
+          <div class="sc"><span>Close</span><kbd>Esc</kbd></div>
+        </div>
+      </div>
+    </div>
   </div>
 
   <script>
@@ -2167,6 +2233,19 @@
       saveToUrl();
       render();
     }
+
+    // ========== Keyboard shortcut help overlay ==========
+    function openShortcuts() { document.getElementById('shortcutsOverlay').classList.add('open'); }
+    function closeShortcuts() { document.getElementById('shortcutsOverlay').classList.remove('open'); }
+    document.addEventListener('keydown', e => {
+      const overlay = document.getElementById('shortcutsOverlay');
+      if (e.key === 'Escape' && overlay.classList.contains('open')) { e.preventDefault(); closeShortcuts(); return; }
+      // "?" opens it, but never while typing in a line or table cell.
+      if (e.key === '?' && !document.getElementById('lineInput') && !document.getElementById('cellInput')) {
+        e.preventDefault();
+        openShortcuts();
+      }
+    });
 
     // Live footer stats: words / chars / reading time. Words skip fenced code.
     function updateStats() {
