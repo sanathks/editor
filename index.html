@@ -131,6 +131,14 @@
     .line-preview img { max-width: 100%; border-radius: 8px; }
     .line-preview ul, .line-preview ol { margin: 0; padding-left: 0; list-style: none; }
     .line-preview li { margin: 0; line-height: 1.7; }
+    /* Real semantic lists (#12): restore markers the generic rule strips. */
+    .line-preview ul.md-list { list-style: disc; padding-left: 1.6em; margin: 0; }
+    .line-preview ol.md-list { list-style: decimal; padding-left: 1.6em; margin: 0; }
+    .line-preview .md-list .md-list { padding-left: 1.4em; }
+    .line-preview .md-list li { margin: 0; }
+    .line-preview .md-list li.has-check { list-style: none; margin-left: -1.6em; }
+    .line-preview .md-list li::marker { color: #565f89; }
+    .line-preview .md-list .li-content { cursor: text; }
 
     /* Checklist in preview */
     .line-preview input[type="checkbox"] {
@@ -702,6 +710,81 @@
       return `<div class="line" data-line="${start}"><div class="line-preview"><blockquote class="bq-group">${inner}</blockquote></div></div>`;
     }
 
+    // ---- List grouping (real nested <ul>/<ol>/<li>) ----
+    // A list line is a bullet/checklist/numbered item at any indent.
+    function isListLine(t) { return /^(\s*)([-*+]\s(\[[ xX]\]\s)?|\d+\.\s)/.test(t); }
+
+    function getListRanges() {
+      const ranges = []; let start = -1;
+      for (let i = 0; i < lines.length; i++) {
+        if (isListLine(lines[i])) { if (start === -1) start = i; }
+        else { if (start !== -1) { ranges.push([start, i - 1]); start = -1; } }
+      }
+      if (start !== -1) ranges.push([start, lines.length - 1]);
+      return ranges;
+    }
+
+    // Indent level: each tab = 1 level, every 2 spaces = 1 level.
+    function listIndentLevel(text) {
+      const ws = (text.match(/^[ \t]*/) || [''])[0];
+      const tabs = (ws.match(/\t/g) || []).length;
+      const spaces = ws.replace(/\t/g, '').length;
+      return tabs + Math.floor(spaces / 2);
+    }
+
+    function parseListItem(text, line) {
+      const ordered = /^\s*\d+\.\s/.test(text);
+      const checkMatch = text.match(/^\s*[-*+]\s\[([ xX])\]\s/);
+      const isCheck = !!checkMatch;
+      const checked = isCheck && /x/i.test(checkMatch[1]);
+      let content, num = null;
+      if (ordered) {
+        const m = text.match(/^\s*(\d+)\.\s([\s\S]*)$/);
+        num = m ? parseInt(m[1], 10) : 1;
+        content = m ? m[2] : text.trim();
+      } else if (isCheck) {
+        content = text.replace(/^\s*[-*+]\s\[[ xX]\]\s/, '');
+      } else {
+        content = text.replace(/^\s*[-*+]\s/, '');
+      }
+      return { line, level: listIndentLevel(text), ordered, isCheck, checked, content, num };
+    }
+
+    // Build nested <ul>/<ol> HTML from a flat item list using a level stack.
+    // The clickable/editable content lives in a .li-content span; any nested list
+    // is a SIBLING of that span, so clicking a nested item never bubbles into the
+    // parent item's edit handler.
+    function buildListHtml(items) {
+      let i = 0;
+      function renderLevel(level) {
+        const ordered = items[i].ordered;
+        let out = ordered ? `<ol class="md-list" start="${items[i].num || 1}">` : '<ul class="md-list">';
+        while (i < items.length && items[i].level === level && items[i].ordered === ordered) {
+          const it = items[i];
+          i++;
+          const box = it.isCheck
+            ? `<input type="checkbox" ${it.checked ? 'checked' : ''} data-line="${it.line}"> `
+            : '';
+          const content = renderInline(it.content) || '&nbsp;';
+          const inner = `<span class="li-content" data-line="${it.line}" onclick="startEditLine(${it.line}, event)">${box}<span class="${it.isCheck && it.checked ? 'task-checked' : ''}">${content}</span></span>`;
+          let childHtml = '';
+          if (i < items.length && items[i].level > level) childHtml = renderLevel(items[i].level);
+          out += `<li class="${it.isCheck ? 'has-check' : ''}">${inner}${childHtml}</li>`;
+        }
+        out += ordered ? '</ol>' : '</ul>';
+        return out;
+      }
+      let html = '';
+      while (i < items.length) html += renderLevel(items[i].level);
+      return html;
+    }
+
+    function renderListGroup(start, end) {
+      const items = [];
+      for (let j = start; j <= end; j++) items.push(parseListItem(lines[j], j));
+      return `<div class="line" data-line="${start}"><div class="line-preview">${buildListHtml(items)}</div></div>`;
+    }
+
     // ========== Collapsed heading logic ==========
     function getHiddenLines() {
       const hidden = new Set();
@@ -730,6 +813,7 @@
       const codeRanges = getCodeBlockRanges();
       const tableRanges = getTableRanges();
       const bqRanges = getBlockquoteRanges();
+      const listRanges = getListRanges();
       const hiddenLines = getHiddenLines();
 
       let html = '';
@@ -775,6 +859,18 @@
           if (!editingInBq) {
             html += renderBlockquoteGroup(bqRange.start, bqRange.end);
             i = bqRange.end + 1;
+            continue;
+          }
+        }
+
+        // Group consecutive list items into real nested <ul>/<ol>. While a line in
+        // the run is being edited, fall through to per-line rendering.
+        const listRange = isInRange(i, listRanges);
+        if (listRange && i === listRange.start) {
+          const editingInList = editingLine >= listRange.start && editingLine <= listRange.end;
+          if (!editingInList) {
+            html += renderListGroup(listRange.start, listRange.end);
+            i = listRange.end + 1;
             continue;
           }
         }
