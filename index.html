@@ -1715,10 +1715,20 @@
       a.click();
     }
 
+    // Browsers/messengers truncate long URLs well below lz-string's capacity, so
+    // warn (but still copy) when the share link is too long to be reliable.
+    const SHARE_WARN_LEN = 8000;
     function shareDoc() {
       commitEdit();
       saveToUrl();
-      navigator.clipboard.writeText(location.href).then(() => showToast('Link copied!'));
+      const href = location.href;
+      navigator.clipboard.writeText(href).then(() => {
+        if (href.length > SHARE_WARN_LEN) {
+          showToast('Link copied, but it is very long and may be truncated by some apps — keep a copy of your document.', 5000);
+        } else {
+          showToast('Link copied!');
+        }
+      });
     }
 
     function clearDoc() {
@@ -1732,12 +1742,12 @@
       render();
     }
 
-    function showToast(msg) {
+    function showToast(msg, duration = 2000) {
       const t = document.createElement('div');
       t.className = 'toast';
       t.textContent = msg;
       document.body.appendChild(t);
-      setTimeout(() => t.remove(), 2000);
+      setTimeout(() => t.remove(), duration);
     }
 
     // ========== Dropdowns ==========
@@ -1754,17 +1764,28 @@
       if (!e.target.closest('.dropdown')) closeDropdowns();
     });
 
+    // A present-but-undecodable #doc= means a truncated/corrupt share link; fail
+    // loudly instead of silently rendering a blank document.
+    function warnIfCorruptHash(doc) {
+      if (!doc && location.hash.startsWith('#doc=')) {
+        showToast("Couldn't load this link — it may be truncated or corrupt.", 5000);
+      }
+    }
+
     // ========== Init ==========
     function init() {
       const doc = loadFromUrl();
       if (doc) {
         lines = doc.split('\n');
+      } else {
+        warnIfCorruptHash(doc);
       }
       render();
     }
 
     window.addEventListener('hashchange', () => {
       const doc = loadFromUrl();
+      warnIfCorruptHash(doc);
       lines = doc ? doc.split('\n') : [];
       editingLine = -1;
       collapsedHeadings.clear();
