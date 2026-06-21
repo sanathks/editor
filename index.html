@@ -40,8 +40,25 @@
       }
     }
   </script>
+  <script>
+    // Apply persisted reading font/size before paint to avoid a flash.
+    try {
+      var _rf = localStorage.getItem('readingFont');
+      var _rs = parseInt(localStorage.getItem('readingSize'), 10);
+      var _F = { 'Literata': "'Literata', Georgia, serif", 'Source Serif 4': "'Source Serif 4', Georgia, serif", 'Merriweather': "'Merriweather', Georgia, serif", 'Inter': "'Inter', -apple-system, sans-serif", 'JetBrains Mono': "'JetBrains Mono', monospace" };
+      if (_rf && _F[_rf]) document.documentElement.style.setProperty('--reading-font', _F[_rf]);
+      if (_rs >= 14 && _rs <= 24) document.documentElement.style.setProperty('--reading-size', _rs + 'px');
+    } catch (e) {}
+  </script>
   <style>
-    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap');
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&family=Literata:ital,opsz,wght@0,7..72,400..700;1,7..72,400..600&family=Source+Serif+4:ital,opsz,wght@0,8..60,400..700;1,8..60,400..600&family=Merriweather:ital,wght@0,400;0,700;1,400&display=swap');
+
+    /* Reading typography (#16): serif reading surface, UI chrome stays Inter.
+       Font + size are user-adjustable (Aa control) and persisted. */
+    :root {
+      --reading-font: 'Literata', Georgia, serif;
+      --reading-size: 18px;
+    }
     
     * { box-sizing: border-box; margin: 0; padding: 0; }
     body { 
@@ -77,6 +94,18 @@
       white-space: nowrap;
     }
     .dropdown-item:hover { background: rgba(122, 162, 247, 0.15); }
+    .dropdown-item.active { color: #7aa2f7; }
+    .dropdown-item.active::after { content: '✓'; margin-left: auto; }
+    .reading-size-row {
+      display: flex; align-items: center; justify-content: space-between;
+      gap: 8px; padding: 8px 12px; margin-top: 4px; border-top: 1px solid #414868;
+      color: #a9b1d6; font-size: 13px;
+    }
+    .reading-size-btn {
+      background: transparent; border: 1px solid #414868; color: #a9b1d6;
+      border-radius: 5px; padding: 2px 10px; cursor: pointer; font-size: 13px;
+    }
+    .reading-size-btn:hover { background: rgba(122, 162, 247, 0.15); color: #c0caf5; }
 
     /* Editor area */
     #editor {
@@ -104,13 +133,13 @@
     }
 
     /* Preview content styles */
-    .line-preview { line-height: 1.7; }
-    .line-preview h1 { font-size: 2em; font-weight: 700; color: #c0caf5; margin: 0.4em 0 0.2em; line-height: 1.2; }
-    .line-preview h2 { font-size: 1.5em; font-weight: 600; color: #c0caf5; margin: 0.35em 0 0.15em; line-height: 1.3; border-bottom: 1px solid #414868; padding-bottom: 0.15em; }
+    .line-preview { font-family: var(--reading-font); font-size: var(--reading-size); line-height: 1.8; }
+    .line-preview h1 { font-size: 2em; font-weight: 700; color: #c0caf5; margin: 0.4em 0 0.2em; line-height: 1.2; letter-spacing: -0.02em; }
+    .line-preview h2 { font-size: 1.5em; font-weight: 600; color: #c0caf5; margin: 0.35em 0 0.15em; line-height: 1.3; letter-spacing: -0.02em; border-bottom: 1px solid #414868; padding-bottom: 0.15em; }
     .line-preview h3 { font-size: 1.25em; font-weight: 600; color: #c0caf5; margin: 0.3em 0 0.1em; }
     .line-preview h4 { font-size: 1.1em; font-weight: 600; color: #c0caf5; margin: 0.2em 0 0.1em; }
     .line-preview h5, .line-preview h6 { font-size: 1em; font-weight: 600; color: #a9b1d6; }
-    .line-preview p { margin: 0; line-height: 1.7; }
+    .line-preview p { margin: 0; line-height: 1.8; }
     .line-preview a { color: #7aa2f7; text-decoration: underline; }
     .line-preview strong { color: #c0caf5; font-weight: 600; }
     .line-preview em { color: #bb9af7; }
@@ -455,6 +484,23 @@
         </button>
 
         <div class="divider"></div>
+
+        <!-- Reading font + size (Aa) -->
+        <div class="dropdown" id="readingDropdown">
+          <button class="tool-btn" onclick="toggleDropdown('readingDropdown')" aria-label="Reading font and size" title="Reading font &amp; size" style="font-family:'Literata',serif;font-weight:600">Aa</button>
+          <div class="dropdown-menu" style="min-width:180px">
+            <div class="dropdown-item" onclick="setReadingFont('Literata')" data-font="Literata" style="font-family:'Literata',serif">Literata</div>
+            <div class="dropdown-item" onclick="setReadingFont('Source Serif 4')" data-font="Source Serif 4" style="font-family:'Source Serif 4',serif">Source Serif</div>
+            <div class="dropdown-item" onclick="setReadingFont('Merriweather')" data-font="Merriweather" style="font-family:'Merriweather',serif">Merriweather</div>
+            <div class="dropdown-item" onclick="setReadingFont('Inter')" data-font="Inter" style="font-family:'Inter',sans-serif">Inter</div>
+            <div class="dropdown-item" onclick="setReadingFont('JetBrains Mono')" data-font="JetBrains Mono" style="font-family:'JetBrains Mono',monospace">Mono</div>
+            <div class="reading-size-row">
+              <button class="reading-size-btn" onclick="stepReadingSize(-1, event)" aria-label="Decrease text size">A&minus;</button>
+              <span id="readingSizeLabel">18px</span>
+              <button class="reading-size-btn" onclick="stepReadingSize(1, event)" aria-label="Increase text size">A+</button>
+            </div>
+          </div>
+        </div>
 
         <!-- Export dropdown -->
         <div class="dropdown" id="exportDropdown">
@@ -1732,6 +1778,53 @@
       render();
     }
 
+    // ========== Reading typography (font + size) ==========
+    const READING_FONTS = {
+      'Literata': "'Literata', Georgia, serif",
+      'Source Serif 4': "'Source Serif 4', Georgia, serif",
+      'Merriweather': "'Merriweather', Georgia, serif",
+      'Inter': "'Inter', -apple-system, sans-serif",
+      'JetBrains Mono': "'JetBrains Mono', monospace",
+    };
+    const READING_MIN = 14, READING_MAX = 24;
+
+    function applyReadingFont(name) {
+      const stack = READING_FONTS[name] || READING_FONTS['Literata'];
+      document.documentElement.style.setProperty('--reading-font', stack);
+      document.querySelectorAll('#readingDropdown .dropdown-item[data-font]').forEach(el => {
+        el.classList.toggle('active', el.dataset.font === name);
+      });
+    }
+    function applyReadingSize(px) {
+      const clamped = Math.max(READING_MIN, Math.min(READING_MAX, px));
+      document.documentElement.style.setProperty('--reading-size', clamped + 'px');
+      const label = document.getElementById('readingSizeLabel');
+      if (label) label.textContent = clamped + 'px';
+      return clamped;
+    }
+    function setReadingFont(name) {
+      applyReadingFont(name);
+      try { localStorage.setItem('readingFont', name); } catch (e) {}
+    }
+    function currentReadingSize() {
+      const v = parseInt(getComputedStyle(document.documentElement).getPropertyValue('--reading-size'), 10);
+      return isNaN(v) ? 18 : v;
+    }
+    function stepReadingSize(delta, e) {
+      if (e) e.stopPropagation();   // keep the dropdown open while stepping
+      const next = applyReadingSize(currentReadingSize() + delta * 2);
+      try { localStorage.setItem('readingSize', String(next)); } catch (e) {}
+    }
+    function initReading() {
+      let font = 'Literata', size = 18;
+      try {
+        font = localStorage.getItem('readingFont') || 'Literata';
+        size = parseInt(localStorage.getItem('readingSize'), 10) || 18;
+      } catch (e) {}
+      applyReadingFont(font);
+      applyReadingSize(size);
+    }
+
     function showToast(msg) {
       const t = document.createElement('div');
       t.className = 'toast';
@@ -1771,6 +1864,7 @@
       render();
     });
 
+    initReading();
     init();
   </script>
 </body>
