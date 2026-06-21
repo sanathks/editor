@@ -14,7 +14,10 @@ group('a11y: every toolbar button has an accessible name');
       .map(b => b.getAttribute('title') || b.outerHTML.slice(0, 40));
     return { total: btns.length, unlabeled };
   });
-  check('toolbar has the expected buttons', r.total === 18, `count=${r.total}`);
+  // Floor, not exact: later tickets legitimately add toolbar buttons (docs panel,
+  // theme toggle, etc.). The strong a11y guarantees below (every button labeled,
+  // every SVG aria-hidden) stay exact.
+  check('toolbar has at least the baseline buttons', r.total >= 18, `count=${r.total}`);
   check('no toolbar button lacks an aria-label', r.unlabeled.length === 0, r.unlabeled.join(' | '));
   await page.close();
 }
