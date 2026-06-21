@@ -200,6 +200,29 @@
     }
     .code-copy-btn:hover { background: #414868; color: #c0caf5; }
 
+    /* Find & replace bar */
+    #findBar {
+      position: fixed; top: 64px; right: 16px; z-index: 50;
+      display: none; align-items: center; gap: 6px; flex-wrap: wrap; max-width: calc(100vw - 32px);
+      background: #24283b; border: 1px solid #414868; border-radius: 8px;
+      padding: 6px 8px; box-shadow: 0 8px 24px rgba(0,0,0,0.4);
+    }
+    #findBar.open { display: flex; }
+    #findBar input {
+      background: #1a1b26; border: 1px solid #414868; color: #c0caf5;
+      border-radius: 5px; padding: 4px 8px; font-size: 13px; outline: none; width: 130px;
+      font-family: 'Inter', -apple-system, sans-serif;
+    }
+    #findBar input:focus { border-color: #7aa2f7; }
+    .find-count { color: #565f89; font-size: 12px; min-width: 36px; text-align: center; }
+    .find-btn {
+      background: transparent; border: 1px solid #414868; color: #a9b1d6;
+      border-radius: 5px; padding: 3px 8px; font-size: 12px; cursor: pointer; transition: all 0.15s;
+    }
+    .find-btn:hover { background: #414868; color: #c0caf5; }
+    .find-btn.active { background: #7aa2f7; color: #1a1b26; border-color: #7aa2f7; }
+    .line.find-current { background: rgba(122,162,247,0.18); border-radius: 3px; }
+
     /* Interactive table styles */
     .table-component { margin: 0.5em 0; position: relative; }
     .table-component table { 
@@ -499,6 +522,19 @@
     <div id="editor"></div>
   </main>
 
+  <!-- Find & replace bar -->
+  <div id="findBar" role="search">
+    <input id="findInput" type="text" placeholder="Find" oninput="updateFind()" onkeydown="findInputKey(event)" aria-label="Find">
+    <span id="findCount" class="find-count"></span>
+    <button class="find-btn" onclick="findPrev()" aria-label="Previous match" title="Previous (Shift+Enter)">&uarr;</button>
+    <button class="find-btn" onclick="findNext()" aria-label="Next match" title="Next (Enter)">&darr;</button>
+    <button class="find-btn" id="findCase" onclick="toggleFindCase()" aria-label="Match case" title="Match case">Aa</button>
+    <input id="replaceInput" type="text" placeholder="Replace" aria-label="Replace">
+    <button class="find-btn" onclick="replaceOne()" title="Replace current match">Replace</button>
+    <button class="find-btn" onclick="replaceAll()" title="Replace all matches">All</button>
+    <button class="find-btn" onclick="closeFind()" aria-label="Close find" title="Close (Esc)">&times;</button>
+  </div>
+
   <!-- Footer -->
   <div id="footer">
     <span>Editor</span>
@@ -511,6 +547,11 @@
     let lines = []; // Array of raw markdown strings, one per line
     let editingLine = -1; // Index of the line currently being edited
     let collapsedHeadings = new Set(); // Set of line indices that are collapsed
+    // Find & replace state
+    let findOpen = false;
+    let findMatches = []; // [{ line, start }] over the raw lines[] source
+    let findIndex = 0;
+    let findCaseSensitive = false;
     let undoStack = [];
     let redoStack = [];
     const MAX_UNDO = 100;
@@ -1188,6 +1229,10 @@
 
     // ========== Input handling ==========
     document.addEventListener('keydown', e => {
+      // Find & replace: works in any context, so handle it before other guards.
+      if ((e.ctrlKey || e.metaKey) && (e.key === 'f' || e.key === 'F')) { e.preventDefault(); openFind(); return; }
+      if (e.key === 'Escape' && findOpen) { e.preventDefault(); closeFind(); return; }
+
       // Skip if editing a table cell (handled by cell keydown)
       if (document.getElementById('cellInput')) return;
       
@@ -1632,6 +1677,120 @@
         const inp = document.getElementById('cellInput');
         if (inp) { inp.focus(); inp.select(); }
       }, 0);
+    }
+
+    // ========== Find & replace ==========
+    function openFind() {
+      findOpen = true;
+      document.getElementById('findBar').classList.add('open');
+      updateFind();
+      const inp = document.getElementById('findInput');
+      inp.focus(); inp.select();
+    }
+
+    function closeFind() {
+      findOpen = false;
+      document.getElementById('findBar').classList.remove('open');
+      clearFindHighlight();
+    }
+
+    function clearFindHighlight() {
+      document.querySelectorAll('.line.find-current').forEach(l => l.classList.remove('find-current'));
+    }
+
+    function computeMatches(query) {
+      const matches = [];
+      if (!query) return matches;
+      const q = findCaseSensitive ? query : query.toLowerCase();
+      for (let i = 0; i < lines.length; i++) {
+        const hay = findCaseSensitive ? lines[i] : lines[i].toLowerCase();
+        let pos = 0, idx;
+        while ((idx = hay.indexOf(q, pos)) !== -1) {
+          matches.push({ line: i, start: idx });
+          pos = idx + q.length;
+        }
+      }
+      return matches;
+    }
+
+    // Recompute matches (after query/case change or an edit shifts positions).
+    function updateFind() {
+      const query = document.getElementById('findInput').value;
+      findMatches = computeMatches(query);
+      if (findIndex >= findMatches.length) findIndex = 0;
+      renderFindState();
+    }
+
+    // Update count + current-line highlight without recomputing matches.
+    function renderFindState() {
+      const query = document.getElementById('findInput').value;
+      const countEl = document.getElementById('findCount');
+      countEl.textContent = findMatches.length ? `${findIndex + 1}/${findMatches.length}` : (query ? '0/0' : '');
+      clearFindHighlight();
+      if (!findMatches.length) return;
+      const lineEl = document.querySelector(`.line[data-line="${findMatches[findIndex].line}"]`);
+      if (lineEl) {
+        lineEl.classList.add('find-current');
+        lineEl.scrollIntoView({ block: 'center', behavior: 'smooth' });
+      }
+    }
+
+    function findNext() {
+      if (!findMatches.length) return;
+      findIndex = (findIndex + 1) % findMatches.length;
+      renderFindState();
+    }
+    function findPrev() {
+      if (!findMatches.length) return;
+      findIndex = (findIndex - 1 + findMatches.length) % findMatches.length;
+      renderFindState();
+    }
+    function toggleFindCase() {
+      findCaseSensitive = !findCaseSensitive;
+      document.getElementById('findCase').classList.toggle('active', findCaseSensitive);
+      updateFind();
+    }
+
+    function findInputKey(e) {
+      if (e.key === 'Enter') { e.preventDefault(); e.shiftKey ? findPrev() : findNext(); }
+      else if (e.key === 'Escape') { e.preventDefault(); closeFind(); }
+    }
+
+    function replaceOne() {
+      if (!findMatches.length) return;
+      if (editingLine >= 0) commitEdit();
+      const query = document.getElementById('findInput').value;
+      const repl = document.getElementById('replaceInput').value;
+      const m = findMatches[findIndex];
+      pushUndo();
+      const line = lines[m.line];
+      lines[m.line] = line.slice(0, m.start) + repl + line.slice(m.start + query.length);
+      saveToUrl();
+      render();
+      updateFind();
+    }
+
+    function replaceAll() {
+      const query = document.getElementById('findInput').value;
+      if (!query || !findMatches.length) return;
+      if (editingLine >= 0) commitEdit();
+      const repl = document.getElementById('replaceInput').value;
+      pushUndo();
+      const q = findCaseSensitive ? query : query.toLowerCase();
+      for (let i = 0; i < lines.length; i++) {
+        const hay = lines[i];
+        const low = findCaseSensitive ? hay : hay.toLowerCase();
+        let result = '', pos = 0, idx;
+        while ((idx = low.indexOf(q, pos)) !== -1) {
+          result += hay.slice(pos, idx) + repl;
+          pos = idx + q.length;
+        }
+        result += hay.slice(pos);
+        lines[i] = result;
+      }
+      saveToUrl();
+      render();
+      updateFind();
     }
 
     // ========== Undo/Redo ==========
