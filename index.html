@@ -14,39 +14,98 @@
   <script src="https://cdn.jsdelivr.net/npm/dompurify@3.2.4/dist/purify.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/lz-string@1.5.0/libs/lz-string.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/html2pdf.js@0.10.1/dist/html2pdf.bundle.min.js"></script>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/atom-one-dark.min.css">
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
   <script>
     tailwind.config = {
       theme: {
         extend: {
           colors: {
             storm: {
-              bg: '#1a1b26',
-              bg2: '#24283b',
-              bg3: '#1e2030',
-              fg: '#a9b1d6',
-              fgBright: '#c0caf5',
-              accent: '#7aa2f7',
-              green: '#9ece6a',
-              red: '#f7768e',
-              yellow: '#e0af68',
-              purple: '#bb9af7',
-              cyan: '#7dcfff',
-              orange: '#ff9e64',
-              muted: '#565f89',
-              border: '#414868',
+              bg: 'var(--bg)',
+              bg2: 'var(--surface)',
+              bg3: 'var(--surface-2)',
+              fg: 'var(--text)',
+              fgBright: 'var(--text-bright)',
+              accent: 'var(--accent)',
+              green: 'var(--green)',
+              red: 'var(--red)',
+              yellow: 'var(--yellow)',
+              purple: 'var(--accent-2)',
+              cyan: 'var(--cyan)',
+              orange: 'var(--code)',
+              muted: 'var(--text-muted)',
+              border: 'var(--border)',
             }
           }
         }
       }
     }
   </script>
+  <script>
+    // Apply persisted theme before paint to avoid a flash. Default = light.
+    try { if (localStorage.getItem('theme') === 'dark') document.documentElement.setAttribute('data-theme', 'dark'); } catch (e) {}
+    // Apply persisted reading font/size before paint to avoid a flash.
+    try {
+      var _rf = localStorage.getItem('readingFont');
+      var _rs = parseInt(localStorage.getItem('readingSize'), 10);
+      var _F = { 'Literata': "'Literata', Georgia, serif", 'Source Serif 4': "'Source Serif 4', Georgia, serif", 'Merriweather': "'Merriweather', Georgia, serif", 'Inter': "'Inter', -apple-system, sans-serif", 'JetBrains Mono': "'JetBrains Mono', monospace" };
+      if (_rf && _F[_rf]) document.documentElement.style.setProperty('--reading-font', _F[_rf]);
+      if (_rs >= 14 && _rs <= 24) document.documentElement.style.setProperty('--reading-size', _rs + 'px');
+    } catch (e) {}
+  </script>
   <style>
-    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap');
-    
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&family=Literata:ital,opsz,wght@0,7..72,400..700;1,7..72,400..600&family=Source+Serif+4:ital,opsz,wght@0,8..60,400..700;1,8..60,400..600&family=Merriweather:ital,wght@0,400;0,700;1,400&display=swap');
+
+    /* Theme palettes (#15). Default = light "paper" (pockd-derived); dark via
+       data-theme="dark" on <html>. Reading typography (#16): serif reading
+       surface (UI chrome stays Inter), user-adjustable via the Aa control. */
+    :root {
+      --bg: #FAFAFA;            /* writing surface */
+      --surface: #F2F0EB;       /* toolbar / code / panels */
+      --surface-2: #F7F5F0;
+      --border: #DDD9D0;
+      --text: #2C2A26;
+      --text-bright: #1A1A1A;
+      --text-muted: #9A9690;
+      --accent: #6366F1;        /* indigo */
+      --accent-2: #7C3AED;      /* violet (emphasis) */
+      --code: #B5530F;          /* inline code */
+      --green: #15803D;
+      --red: #DC2626;
+      --yellow: #B45309;
+      --cyan: #0E7490;
+      --check: #6366F1;
+      --reading-font: 'Literata', Georgia, serif;
+      --reading-size: 18px;
+    }
+    [data-theme="dark"] {
+      --bg: #1a1b26;
+      --surface: #24283b;
+      --surface-2: #1e2030;
+      --border: #414868;
+      --text: #a9b1d6;
+      --text-bright: #c0caf5;
+      --text-muted: #565f89;
+      --accent: #7aa2f7;
+      --accent-2: #bb9af7;
+      --code: #ff9e64;
+      --green: #9ece6a;
+      --red: #f7768e;
+      --yellow: #e0af68;
+      --cyan: #7dcfff;
+      --check: #4caf50;
+    }
+    /* Smooth theme switch */
+    body, .tool-btn, .dropdown-menu, .dropdown-item, #footer, #main, .line,
+    .line-preview, .line-preview pre, .line-preview code, #emptyState kbd {
+      transition: background-color 0.15s ease-out, border-color 0.15s ease-out, color 0.15s ease-out;
+    }
+
     * { box-sizing: border-box; margin: 0; padding: 0; }
     body { 
-      background: #1a1b26; 
-      color: #a9b1d6; 
+      background: var(--bg); 
+      color: var(--text); 
       font-family: 'Inter', -apple-system, sans-serif;
       overflow: hidden;
       height: 100vh;
@@ -57,26 +116,38 @@
       width: 36px; height: 36px; 
       display: flex; align-items: center; justify-content: center;
       background: transparent; border: none; border-radius: 8px;
-      color: #a9b1d6; cursor: pointer; transition: all 0.15s;
+      color: var(--text); cursor: pointer; transition: all 0.15s;
     }
     .tool-btn:hover { background: rgba(122, 162, 247, 0.15); }
-    .tool-btn.active { background: #7aa2f7; color: #1a1b26; }
+    .tool-btn.active { background: var(--accent); color: var(--bg); }
     .tool-btn svg { width: 20px; height: 20px; }
-    .divider { width: 1px; height: 24px; background: #414868; margin: 0 4px; flex-shrink: 0; }
+    .divider { width: 1px; height: 24px; background: var(--border); margin: 0 4px; flex-shrink: 0; }
     
     .dropdown { position: relative; }
     .dropdown-menu { 
       position: absolute; top: 44px; left: 50%; transform: translateX(-50%);
-      background: #24283b; border: 1px solid #414868; border-radius: 8px;
+      background: var(--surface); border: 1px solid var(--border); border-radius: 8px;
       padding: 6px; min-width: 140px; z-index: 100; display: none;
     }
     .dropdown.open .dropdown-menu { display: block; }
     .dropdown-item {
       display: flex; align-items: center; gap: 8px; padding: 8px 12px;
-      border-radius: 6px; cursor: pointer; color: #a9b1d6; font-size: 13px;
+      border-radius: 6px; cursor: pointer; color: var(--text); font-size: 13px;
       white-space: nowrap;
     }
     .dropdown-item:hover { background: rgba(122, 162, 247, 0.15); }
+    .dropdown-item.active { color: #7aa2f7; }
+    .dropdown-item.active::after { content: '✓'; margin-left: auto; }
+    .reading-size-row {
+      display: flex; align-items: center; justify-content: space-between;
+      gap: 8px; padding: 8px 12px; margin-top: 4px; border-top: 1px solid #414868;
+      color: #a9b1d6; font-size: 13px;
+    }
+    .reading-size-btn {
+      background: transparent; border: 1px solid #414868; color: #a9b1d6;
+      border-radius: 5px; padding: 2px 10px; cursor: pointer; font-size: 13px;
+    }
+    .reading-size-btn:hover { background: rgba(122, 162, 247, 0.15); color: #c0caf5; }
 
     /* Slash command menu */
     #slashMenu {
@@ -119,49 +190,67 @@
     }
 
     /* Preview content styles */
-    .line-preview { line-height: 1.7; }
-    .line-preview h1 { font-size: 2em; font-weight: 700; color: #c0caf5; margin: 0.4em 0 0.2em; line-height: 1.2; }
-    .line-preview h2 { font-size: 1.5em; font-weight: 600; color: #c0caf5; margin: 0.35em 0 0.15em; line-height: 1.3; border-bottom: 1px solid #414868; padding-bottom: 0.15em; }
-    .line-preview h3 { font-size: 1.25em; font-weight: 600; color: #c0caf5; margin: 0.3em 0 0.1em; }
-    .line-preview h4 { font-size: 1.1em; font-weight: 600; color: #c0caf5; margin: 0.2em 0 0.1em; }
-    .line-preview h5, .line-preview h6 { font-size: 1em; font-weight: 600; color: #a9b1d6; }
-    .line-preview p { margin: 0; line-height: 1.7; }
-    .line-preview a { color: #7aa2f7; text-decoration: underline; }
-    .line-preview strong { color: #c0caf5; font-weight: 600; }
-    .line-preview em { color: #bb9af7; }
-    .line-preview code { 
-      background: #24283b; padding: 2px 6px; border-radius: 4px; 
-      font-family: 'JetBrains Mono', monospace; font-size: 0.85em; color: #ff9e64;
+    .line-preview { font-family: var(--reading-font); font-size: var(--reading-size); line-height: 1.8; }
+    .line-preview h1 { font-size: 2em; font-weight: 700; color: var(--text-bright); margin: 0.4em 0 0.2em; line-height: 1.2; letter-spacing: -0.02em; }
+    .line-preview h2 { font-size: 1.5em; font-weight: 600; color: var(--text-bright); margin: 0.35em 0 0.15em; line-height: 1.3; letter-spacing: -0.02em; border-bottom: 1px solid var(--border); padding-bottom: 0.15em; }
+    .line-preview h3 { font-size: 1.25em; font-weight: 600; color: var(--text-bright); margin: 0.3em 0 0.1em; }
+    .line-preview h4 { font-size: 1.1em; font-weight: 600; color: var(--text-bright); margin: 0.2em 0 0.1em; }
+    .line-preview h5, .line-preview h6 { font-size: 1em; font-weight: 600; color: var(--text); }
+    .line-preview p { margin: 0; line-height: 1.8; }
+    .line-preview a { color: var(--accent); text-decoration: underline; }
+    .line-preview strong { color: var(--text-bright); font-weight: 600; }
+    .line-preview em { color: var(--accent-2); }
+    .line-preview code {
+      background: var(--surface); padding: 2px 6px; border-radius: 4px;
+      font-family: 'JetBrains Mono', monospace; font-size: 0.85em; color: var(--code);
+    }
+    /* Fenced code blocks: container chrome + let highlight.js color the tokens
+       (don't apply the inline-code orange/padding to block code). */
+    .line-preview pre {
+      background: #1e2030; border: 1px solid #414868; border-radius: 8px;
+      padding: 12px 16px; overflow-x: auto; margin: 0;
+    }
+    .line-preview pre code, .line-preview pre code.hljs {
+      background: transparent; padding: 0; color: #a9b1d6;
+      font-family: 'JetBrains Mono', monospace; font-size: 0.85em;
     }
     .line-preview blockquote { 
-      border-left: 3px solid #7aa2f7; padding-left: 16px;
-      color: #565f89; font-style: italic;
+      border-left: 3px solid var(--accent); padding-left: 16px;
+      color: var(--text-muted); font-style: italic;
     }
     .line-preview blockquote p { margin: 0; }
     .line-preview blockquote.bq-group { padding-top: 3px; padding-bottom: 3px; }
     .line-preview blockquote .bq-line { margin: 0; cursor: text; }
-    .line-preview blockquote.bq-nested { border-left: 3px solid #565f89; margin: 2px 0 2px 4px; }
-    .line-preview hr { border: none; border-top: 1px solid #414868; margin: 0.8em 0; }
-    .line-preview del { color: #565f89; }
+    .line-preview blockquote.bq-nested { border-left: 3px solid var(--text-muted); margin: 2px 0 2px 4px; }
+    .line-preview hr { border: none; border-top: 1px solid var(--border); margin: 0.8em 0; }
+    .line-preview del { color: var(--text-muted); }
     .line-preview img { max-width: 100%; border-radius: 8px; }
     .line-preview ul, .line-preview ol { margin: 0; padding-left: 0; list-style: none; }
     .line-preview li { margin: 0; line-height: 1.7; }
+    /* Real semantic lists (#12): restore markers the generic rule strips. */
+    .line-preview ul.md-list { list-style: disc; padding-left: 1.6em; margin: 0; }
+    .line-preview ol.md-list { list-style: decimal; padding-left: 1.6em; margin: 0; }
+    .line-preview .md-list .md-list { padding-left: 1.4em; }
+    .line-preview .md-list li { margin: 0; }
+    .line-preview .md-list li.has-check { list-style: none; margin-left: -1.6em; }
+    .line-preview .md-list li::marker { color: #565f89; }
+    .line-preview .md-list .li-content { cursor: text; }
 
     /* Checklist in preview */
     .line-preview input[type="checkbox"] {
       appearance: none; -webkit-appearance: none;
-      width: 18px; height: 18px; border: 2px solid #414868; border-radius: 4px;
+      width: 18px; height: 18px; border: 2px solid var(--border); border-radius: 4px;
       background: transparent; cursor: pointer; vertical-align: middle;
       margin-right: 6px; position: relative; top: -1px; display: inline-block;
     }
     .line-preview input[type="checkbox"]:checked {
-      background: #9ece6a; border-color: #9ece6a;
+      background: var(--green); border-color: var(--green);
     }
     .line-preview input[type="checkbox"]:checked::after {
-      content: '✓'; color: #1a1b26; font-size: 12px; font-weight: bold;
+      content: '✓'; color: var(--bg); font-size: 12px; font-weight: bold;
       position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
     }
-    .task-checked { color: #9ece6a; text-decoration: line-through; }
+    .task-checked { color: var(--green); text-decoration: line-through; }
 
     /* Indented list items */
     .list-indent { padding-left: 1.5em; }
@@ -170,50 +259,110 @@
 
     /* Code block lines */
     .code-block-line .line-preview {
-      background: #24283b;
+      background: var(--surface);
       font-family: 'JetBrains Mono', monospace;
       font-size: 13px;
       padding: 0 16px;
       line-height: 1.5;
-      color: #a9b1d6;
+      color: var(--text);
     }
     .code-block-start .line-preview {
       border-top-left-radius: 8px;
       border-top-right-radius: 8px;
       padding-top: 12px;
-      border: 1px solid #414868;
+      border: 1px solid var(--border);
       border-bottom: none;
     }
     .code-block-mid .line-preview {
-      border-left: 1px solid #414868;
-      border-right: 1px solid #414868;
+      border-left: 1px solid var(--border);
+      border-right: 1px solid var(--border);
     }
     .code-block-end .line-preview {
       border-bottom-left-radius: 8px;
       border-bottom-right-radius: 8px;
       padding-bottom: 12px;
-      border: 1px solid #414868;
+      border: 1px solid var(--border);
       border-top: none;
     }
     .code-block-single .line-preview {
       border-radius: 8px;
       padding: 12px 16px;
-      border: 1px solid #414868;
+      border: 1px solid var(--border);
     }
+    .code-block-bar {
+      display: flex; align-items: center; justify-content: space-between;
+      gap: 8px; margin-bottom: 4px;
+    }
+    .code-lang {
+      font-family: 'JetBrains Mono', monospace; font-size: 11px;
+      text-transform: uppercase; letter-spacing: 0.05em; color: #565f89;
+    }
+    .code-copy-btn {
+      background: #24283b; border: 1px solid #414868; color: #a9b1d6;
+      font-size: 11px; padding: 2px 8px; border-radius: 4px; cursor: pointer;
+      transition: all 0.15s;
+    }
+    .code-copy-btn:hover { background: #414868; color: #c0caf5; }
+
+    /* Find & replace bar */
+    #findBar {
+      position: fixed; top: 64px; right: 16px; z-index: 50;
+      display: none; align-items: center; gap: 6px; flex-wrap: wrap; max-width: calc(100vw - 32px);
+      background: #24283b; border: 1px solid #414868; border-radius: 8px;
+      padding: 6px 8px; box-shadow: 0 8px 24px rgba(0,0,0,0.4);
+    }
+    #findBar.open { display: flex; }
+    #findBar input {
+      background: #1a1b26; border: 1px solid #414868; color: #c0caf5;
+      border-radius: 5px; padding: 4px 8px; font-size: 13px; outline: none; width: 130px;
+      font-family: 'Inter', -apple-system, sans-serif;
+    }
+    #findBar input:focus { border-color: #7aa2f7; }
+    .find-count { color: #565f89; font-size: 12px; min-width: 36px; text-align: center; }
+    .find-btn {
+      background: transparent; border: 1px solid #414868; color: #a9b1d6;
+      border-radius: 5px; padding: 3px 8px; font-size: 12px; cursor: pointer; transition: all 0.15s;
+    }
+    .find-btn:hover { background: #414868; color: #c0caf5; }
+    .find-btn.active { background: #7aa2f7; color: #1a1b26; border-color: #7aa2f7; }
+    .line.find-current { background: rgba(122,162,247,0.18); border-radius: 3px; }
+
+    /* My documents panel */
+    #docsPanel {
+      position: fixed; top: 0; right: 0; height: 100vh; width: 300px; max-width: 85vw; z-index: 60;
+      background: #1e2030; border-left: 1px solid #414868;
+      transform: translateX(100%); transition: transform 0.2s ease;
+      display: flex; flex-direction: column; box-shadow: -8px 0 24px rgba(0,0,0,0.3);
+    }
+    #docsPanel.open { transform: translateX(0); }
+    .docs-header { display: flex; align-items: center; justify-content: space-between; padding: 14px 16px; border-bottom: 1px solid #414868; }
+    .docs-header h3 { color: #c0caf5; font-size: 14px; font-weight: 600; }
+    .docs-header-actions { display: flex; gap: 6px; }
+    .docs-hbtn { background: transparent; border: 1px solid #414868; color: #a9b1d6; border-radius: 5px; padding: 3px 10px; font-size: 12px; cursor: pointer; transition: all 0.15s; }
+    .docs-hbtn:hover { background: #414868; color: #c0caf5; }
+    .docs-list { flex: 1; overflow-y: auto; padding: 8px; }
+    .docs-empty { color: #565f89; font-size: 13px; padding: 16px; text-align: center; }
+    .doc-item { display: flex; align-items: center; gap: 2px; border-radius: 6px; padding: 2px; }
+    .doc-item:hover, .doc-item.active { background: #24283b; }
+    .doc-open { flex: 1; min-width: 0; display: flex; flex-direction: column; align-items: flex-start; gap: 2px; background: transparent; border: none; color: #a9b1d6; cursor: pointer; padding: 8px; text-align: left; }
+    .doc-title { font-size: 13px; color: #c0caf5; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100%; }
+    .doc-date { font-size: 11px; color: #565f89; }
+    .doc-action { background: transparent; border: none; color: #565f89; cursor: pointer; padding: 6px; border-radius: 5px; font-size: 13px; }
+    .doc-action:hover { background: #414868; color: #c0caf5; }
 
     /* Interactive table styles */
     .table-component { margin: 0.5em 0; position: relative; }
     .table-component table { 
       border-collapse: collapse; width: 100%; table-layout: fixed;
-      border: 1px solid #414868;
+      border: 1px solid var(--border);
     }
     .table-component th { 
-      background: #24283b; padding: 0; text-align: left; 
-      border: 1px solid #414868; font-weight: 600; color: #c0caf5;
+      background: var(--surface); padding: 0; text-align: left; 
+      border: 1px solid var(--border); font-weight: 600; color: var(--text-bright);
       position: relative;
     }
     .table-component td { 
-      padding: 0; border: 1px solid #414868; position: relative;
+      padding: 0; border: 1px solid var(--border); position: relative;
     }
     .table-component th .cell-display,
     .table-component td .cell-display {
@@ -226,40 +375,40 @@
     }
     .table-component .cell-input {
       width: 100%; padding: 6px 10px; background: rgba(122, 162, 247, 0.08);
-      color: #c0caf5; border: none; outline: none;
+      color: var(--text-bright); border: none; outline: none;
       font-family: 'JetBrains Mono', monospace; font-size: 13px;
       line-height: 1.5; min-height: 32px;
       resize: none; overflow: auto; white-space: pre-wrap;
     }
     .table-component .cell-input:focus {
       background: rgba(122, 162, 247, 0.12);
-      box-shadow: inset 0 0 0 1px #7aa2f7;
+      box-shadow: inset 0 0 0 1px var(--accent);
     }
     /* Add column button */
     .table-add-col {
       position: absolute; right: -28px; top: 0;
       width: 24px; height: 100%; background: none; border: none;
-      color: #565f89; cursor: pointer; font-size: 16px;
+      color: var(--text-muted); cursor: pointer; font-size: 16px;
       display: flex; align-items: center; justify-content: center;
       opacity: 0; transition: opacity 0.15s;
       border-radius: 0 6px 6px 0;
     }
     .table-component:hover .table-add-col { opacity: 1; }
-    .table-add-col:hover { background: rgba(122, 162, 247, 0.15); color: #7aa2f7; }
+    .table-add-col:hover { background: rgba(122, 162, 247, 0.15); color: var(--accent); }
     /* Add row button */
     .table-add-row {
-      width: 100%; height: 24px; background: none; border: 1px dashed #414868;
-      border-top: none; color: #565f89; cursor: pointer; font-size: 14px;
+      width: 100%; height: 24px; background: none; border: 1px dashed var(--border);
+      border-top: none; color: var(--text-muted); cursor: pointer; font-size: 14px;
       display: flex; align-items: center; justify-content: center;
       opacity: 0; transition: opacity 0.15s; border-radius: 0 0 6px 6px;
     }
     .table-component:hover .table-add-row { opacity: 1; }
-    .table-add-row:hover { background: rgba(122, 162, 247, 0.08); color: #7aa2f7; }
+    .table-add-row:hover { background: rgba(122, 162, 247, 0.08); color: var(--accent); }
     /* Delete column/row buttons */
     .col-delete {
       position: absolute; top: -20px; left: 50%; transform: translateX(-50%);
-      width: 18px; height: 18px; background: #f7768e; border: none; border-radius: 50%;
-      color: #1a1b26; font-size: 10px; cursor: pointer; display: flex;
+      width: 18px; height: 18px; background: var(--red); border: none; border-radius: 50%;
+      color: var(--bg); font-size: 10px; cursor: pointer; display: flex;
       align-items: center; justify-content: center; opacity: 0; transition: opacity 0.15s;
       z-index: 5;
     }
@@ -267,8 +416,8 @@
     .table-component th:hover .col-delete { opacity: 1; }
     .row-delete {
       position: absolute; left: -22px; top: 50%; transform: translateY(-50%);
-      width: 18px; height: 18px; background: #f7768e; border: none; border-radius: 50%;
-      color: #1a1b26; font-size: 10px; cursor: pointer; display: flex;
+      width: 18px; height: 18px; background: var(--red); border: none; border-radius: 50%;
+      color: var(--bg); font-size: 10px; cursor: pointer; display: flex;
       align-items: center; justify-content: center; opacity: 0; transition: opacity 0.15s;
     }
     .table-component:hover tr:hover .row-delete { opacity: 1; }
@@ -277,22 +426,47 @@
     .collapse-toggle {
       position: absolute; left: -24px; top: 4px;
       width: 20px; height: 20px; background: none; border: none;
-      color: #565f89; cursor: pointer; font-size: 12px;
+      color: var(--text-muted); cursor: pointer; font-size: 12px;
       display: flex; align-items: center; justify-content: center;
       border-radius: 4px; opacity: 0; transition: opacity 0.15s;
     }
     .line:hover .collapse-toggle { opacity: 1; }
-    .collapse-toggle:hover { background: rgba(122, 162, 247, 0.15); color: #a9b1d6; }
+    .collapse-toggle:hover { background: rgba(122, 162, 247, 0.15); color: var(--text); }
 
     /* Editable line */
+    /* Content-first chrome: dim the toolbar until the user reaches for it. */
+    #mainToolbar { opacity: 0.28; transition: opacity 0.2s ease; }
+    header:hover #mainToolbar, #mainToolbar:focus-within { opacity: 1; }
+
+    /* Empty focused line placeholder (Notion feel). */
+    .line-editable:empty::before {
+      content: attr(data-placeholder);
+      color: #565f89;
+      pointer-events: none;
+    }
+
+    /* Medium-style selection bubble. */
+    #selBubble {
+      position: fixed; z-index: 200; display: none; gap: 2px; padding: 4px;
+      background: #24283b; border: 1px solid #414868; border-radius: 8px;
+      box-shadow: 0 6px 20px rgba(0,0,0,0.4);
+    }
+    #selBubble.show { display: flex; }
+    #selBubble button {
+      background: transparent; border: none; color: #a9b1d6; cursor: pointer;
+      width: 30px; height: 30px; border-radius: 6px; font-size: 14px;
+      display: flex; align-items: center; justify-content: center;
+    }
+    #selBubble button:hover { background: #414868; color: #c0caf5; }
+
     .line-editable {
       outline: none;
       background: transparent;
       font-family: 'JetBrains Mono', monospace;
       font-size: 14px;
       line-height: 1.7;
-      color: #c0caf5;
-      caret-color: #7aa2f7;
+      color: var(--text-bright);
+      caret-color: var(--accent);
       white-space: pre-wrap;
       word-wrap: break-word;
       min-height: 1.4em;
@@ -316,31 +490,61 @@
 
     /* Syntax-aware edit mode styles for common block types */
     .line-editable.edit-list, .line-editable.edit-checklist { padding-left: 0.15em; }
-    .line-editable.edit-quote { border-left: 3px solid #565f89; padding-left: 0.6em; color: #bb9af7; }
-    .line-editable.edit-codefence, .line-editable.edit-table { font-family: 'JetBrains Mono', monospace; color: #7dcfff; }
+    .line-editable.edit-quote { border-left: 3px solid var(--text-muted); padding-left: 0.6em; color: var(--accent-2); }
+    .line-editable.edit-codefence, .line-editable.edit-table { font-family: 'JetBrains Mono', monospace; color: var(--cyan); }
 
     /* Scrollbar */
     ::-webkit-scrollbar { width: 8px; }
     ::-webkit-scrollbar-track { background: transparent; }
-    ::-webkit-scrollbar-thumb { background: #414868; border-radius: 4px; }
-    ::-webkit-scrollbar-thumb:hover { background: #565f89; }
+    ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 4px; }
+    ::-webkit-scrollbar-thumb:hover { background: var(--text-muted); }
 
     /* Footer */
     #footer {
       position: fixed; bottom: 0; left: 0; right: 0;
       display: flex; justify-content: center; padding: 12px;
-      font-size: 11px; color: #565f89; gap: 16px;
-      background: linear-gradient(transparent, #1a1b26 40%);
+      font-size: 11px; color: var(--text-muted); gap: 16px;
+      background: linear-gradient(transparent, var(--bg) 40%);
       pointer-events: none;
     }
-    #footer a { color: #565f89; text-decoration: none; pointer-events: auto; }
-    #footer a:hover { color: #7aa2f7; }
+    #footer a { color: var(--text-muted); text-decoration: none; pointer-events: auto; }
+    #footer a:hover { color: var(--accent); }
+    #shortcutsBtn {
+      background: transparent; border: 1px solid #414868; color: #565f89;
+      width: 18px; height: 18px; border-radius: 50%; font-size: 11px; line-height: 1;
+      cursor: pointer; pointer-events: auto; padding: 0;
+    }
+    #shortcutsBtn:hover { color: #7aa2f7; border-color: #7aa2f7; }
+
+    /* Keyboard shortcut overlay */
+    #shortcutsOverlay {
+      position: fixed; inset: 0; z-index: 300; display: none;
+      align-items: center; justify-content: center;
+      background: rgba(0,0,0,0.5);
+    }
+    #shortcutsOverlay.open { display: flex; }
+    .shortcuts-card {
+      background: #24283b; border: 1px solid #414868; border-radius: 12px;
+      padding: 20px 24px; width: min(560px, 90vw); max-height: 80vh; overflow-y: auto;
+      box-shadow: 0 20px 60px rgba(0,0,0,0.5);
+    }
+    .shortcuts-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 16px; }
+    .shortcuts-head h3 { color: #c0caf5; font-size: 16px; font-weight: 600; }
+    .shortcuts-close { background: transparent; border: none; color: #565f89; font-size: 22px; cursor: pointer; line-height: 1; }
+    .shortcuts-close:hover { color: #c0caf5; }
+    .shortcuts-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px 28px; }
+    .shortcuts-group h4 { color: #7aa2f7; font-size: 12px; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 8px; }
+    .sc { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 4px 0; color: #a9b1d6; font-size: 13px; }
+    .sc kbd {
+      background: #1a1b26; border: 1px solid #414868; border-radius: 5px;
+      padding: 2px 8px; font-family: 'JetBrains Mono', monospace; font-size: 11px; color: #c0caf5; white-space: nowrap;
+    }
 
     /* Toast */
     .toast {
       position: fixed; bottom: 40px; left: 50%; transform: translateX(-50%);
-      background: #24283b; color: #9ece6a; padding: 8px 20px; border-radius: 8px;
-      font-size: 13px; border: 1px solid #414868; z-index: 200;
+      background: var(--surface); color: var(--green); padding: 8px 20px; border-radius: 8px;
+      font-size: 13px; border: 1px solid var(--border); z-index: 200;
       animation: fadeInUp 0.2s ease, fadeOut 0.3s ease 1.5s forwards;
     }
     @keyframes fadeInUp { from { opacity: 0; transform: translateX(-50%) translateY(10px); } to { opacity: 1; transform: translateX(-50%) translateY(0); } }
@@ -348,13 +552,13 @@
 
     /* Empty state */
     #emptyState {
-      text-align: center; padding: 120px 20px; color: #565f89;
+      text-align: center; padding: 120px 20px; color: var(--text-muted);
     }
-    #emptyState h2 { color: #a9b1d6; font-size: 1.3em; margin-bottom: 8px; }
+    #emptyState h2 { color: var(--text); font-size: 1.3em; margin-bottom: 8px; }
     #emptyState p { font-size: 14px; }
     #emptyState kbd {
-      background: #24283b; padding: 2px 8px; border-radius: 4px;
-      border: 1px solid #414868; font-size: 12px; color: #a9b1d6;
+      background: var(--surface); padding: 2px 8px; border-radius: 4px;
+      border: 1px solid var(--border); font-size: 12px; color: var(--text);
     }
     /* Print styles for PDF export */
     @media print {
@@ -394,20 +598,26 @@
     </div>
     
     <div class="flex-1 flex justify-center" style="pointer-events:auto">
-      <div class="flex items-center gap-1 bg-storm-bg2 rounded-lg p-1 shadow-lg" style="border:1px solid rgba(255,255,255,0.1)">
-        <!-- Undo/Redo -->
-        <button class="tool-btn" onclick="doUndo()" title="Undo (Ctrl+Z)">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 10h10a5 5 0 1 1 0 10H9"/><polyline points="7 6 3 10 7 14"/></svg>
+      <div id="mainToolbar" class="flex items-center gap-1 bg-storm-bg2 rounded-lg p-1 shadow-lg" style="border:1px solid rgba(255,255,255,0.1)">
+        <!-- My documents -->
+        <button class="tool-btn" onclick="toggleDocsPanel()" aria-label="My documents" title="My documents">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></svg>
         </button>
-        <button class="tool-btn" onclick="doRedo()" title="Redo (Ctrl+Shift+Z)">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 10h-10a5 5 0 1 0 0 10h4"/><polyline points="17 6 21 10 17 14"/></svg>
+        <div class="divider"></div>
+
+        <!-- Undo/Redo -->
+        <button class="tool-btn" aria-label="Undo" onclick="doUndo()" title="Undo (Ctrl+Z)">
+          <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 10h10a5 5 0 1 1 0 10H9"/><polyline points="7 6 3 10 7 14"/></svg>
+        </button>
+        <button class="tool-btn" aria-label="Redo" onclick="doRedo()" title="Redo (Ctrl+Shift+Z)">
+          <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 10h-10a5 5 0 1 0 0 10h4"/><polyline points="17 6 21 10 17 14"/></svg>
         </button>
         <div class="divider"></div>
 
         <!-- Headings -->
         <div class="dropdown" id="headingDropdown">
-          <button class="tool-btn" onclick="toggleDropdown('headingDropdown')" title="Headings">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 12h8M4 18V6M12 18V6M14.5 6h3l-2.5 6h3"/></svg>
+          <button class="tool-btn" aria-label="Headings" aria-haspopup="menu" aria-expanded="false" onclick="toggleDropdown('headingDropdown')" title="Headings">
+            <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 12h8M4 18V6M12 18V6M14.5 6h3l-2.5 6h3"/></svg>
           </button>
           <div class="dropdown-menu">
             <div class="dropdown-item" onclick="insertAtCursor('# ');closeDropdowns()"><strong style="font-size:18px">H1</strong> Heading 1</div>
@@ -417,64 +627,81 @@
         </div>
 
         <!-- Bold -->
-        <button class="tool-btn" onclick="wrapSelection('**')" title="Bold (Ctrl+B)">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M6 4h8a4 4 0 0 1 4 4 4 4 0 0 1-4 4H6z"/><path d="M6 12h9a4 4 0 0 1 4 4 4 4 0 0 1-4 4H6z"/></svg>
+        <button class="tool-btn" aria-label="Bold" onclick="wrapSelection('**')" title="Bold (Ctrl+B)">
+          <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M6 4h8a4 4 0 0 1 4 4 4 4 0 0 1-4 4H6z"/><path d="M6 12h9a4 4 0 0 1 4 4 4 4 0 0 1-4 4H6z"/></svg>
         </button>
         <!-- Italic -->
-        <button class="tool-btn" onclick="wrapSelection('*')" title="Italic (Ctrl+I)">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="19" y1="4" x2="10" y2="4"/><line x1="14" y1="20" x2="5" y2="20"/><line x1="15" y1="4" x2="9" y2="20"/></svg>
+        <button class="tool-btn" aria-label="Italic" onclick="wrapSelection('*')" title="Italic (Ctrl+I)">
+          <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="19" y1="4" x2="10" y2="4"/><line x1="14" y1="20" x2="5" y2="20"/><line x1="15" y1="4" x2="9" y2="20"/></svg>
         </button>
         <!-- Strikethrough -->
-        <button class="tool-btn" onclick="wrapSelection('~~')" title="Strikethrough">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M16 4H9a3 3 0 0 0-3 3v0a3 3 0 0 0 3 3h6a3 3 0 0 1 3 3v0a3 3 0 0 1-3 3H8"/><line x1="4" y1="12" x2="20" y2="12"/></svg>
+        <button class="tool-btn" aria-label="Strikethrough" onclick="wrapSelection('~~')" title="Strikethrough">
+          <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M16 4H9a3 3 0 0 0-3 3v0a3 3 0 0 0 3 3h6a3 3 0 0 1 3 3v0a3 3 0 0 1-3 3H8"/><line x1="4" y1="12" x2="20" y2="12"/></svg>
         </button>
         <!-- Code -->
-        <button class="tool-btn" onclick="wrapSelection('\`')" title="Inline Code">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="16 18 22 12 16 6"/><polyline points="8 6 2 12 8 18"/></svg>
+        <button class="tool-btn" aria-label="Inline Code" onclick="wrapSelection('\`')" title="Inline Code">
+          <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="16 18 22 12 16 6"/><polyline points="8 6 2 12 8 18"/></svg>
         </button>
         
         <div class="divider"></div>
         
         <!-- Lists -->
-        <button class="tool-btn" onclick="insertAtCursor('- ')" title="Bullet List">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><circle cx="4" cy="6" r="1" fill="currentColor"/><circle cx="4" cy="12" r="1" fill="currentColor"/><circle cx="4" cy="18" r="1" fill="currentColor"/></svg>
+        <button class="tool-btn" aria-label="Bullet List" onclick="insertAtCursor('- ')" title="Bullet List">
+          <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><circle cx="4" cy="6" r="1" fill="currentColor"/><circle cx="4" cy="12" r="1" fill="currentColor"/><circle cx="4" cy="18" r="1" fill="currentColor"/></svg>
         </button>
-        <button class="tool-btn" onclick="insertAtCursor('1. ')" title="Numbered List">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="10" y1="6" x2="21" y2="6"/><line x1="10" y1="12" x2="21" y2="12"/><line x1="10" y1="18" x2="21" y2="18"/><text x="3" y="8" font-size="8" fill="currentColor" font-weight="600" stroke="none">1</text><text x="3" y="14" font-size="8" fill="currentColor" font-weight="600" stroke="none">2</text><text x="3" y="20" font-size="8" fill="currentColor" font-weight="600" stroke="none">3</text></svg>
+        <button class="tool-btn" aria-label="Numbered List" onclick="insertAtCursor('1. ')" title="Numbered List">
+          <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="10" y1="6" x2="21" y2="6"/><line x1="10" y1="12" x2="21" y2="12"/><line x1="10" y1="18" x2="21" y2="18"/><text x="3" y="8" font-size="8" fill="currentColor" font-weight="600" stroke="none">1</text><text x="3" y="14" font-size="8" fill="currentColor" font-weight="600" stroke="none">2</text><text x="3" y="20" font-size="8" fill="currentColor" font-weight="600" stroke="none">3</text></svg>
         </button>
-        <button class="tool-btn" onclick="insertAtCursor('- [ ] ')" title="Checklist">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="5" width="6" height="6" rx="1"/><path d="M4.5 8l1.5 1.5L8 7"/><line x1="12" y1="8" x2="21" y2="8"/><rect x="3" y="14" width="6" height="6" rx="1"/><line x1="12" y1="17" x2="21" y2="17"/></svg>
+        <button class="tool-btn" aria-label="Checklist" onclick="insertAtCursor('- [ ] ')" title="Checklist">
+          <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="5" width="6" height="6" rx="1"/><path d="M4.5 8l1.5 1.5L8 7"/><line x1="12" y1="8" x2="21" y2="8"/><rect x="3" y="14" width="6" height="6" rx="1"/><line x1="12" y1="17" x2="21" y2="17"/></svg>
         </button>
 
         <div class="divider"></div>
 
         <!-- Blockquote -->
-        <button class="tool-btn" onclick="insertAtCursor('> ')" title="Blockquote">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 21c3 0 7-1 7-8V5c0-1.25-.756-2.017-2-2H4c-1.25 0-2 .75-2 1.972V11c0 1.25.75 2 2 2 1 0 1 0 1 1v1c0 1-1 2-2 2s-1 .008-1 1.031V21z"/><path d="M15 21c3 0 7-1 7-8V5c0-1.25-.757-2.017-2-2h-4c-1.25 0-2 .75-2 1.972V11c0 1.25.75 2 2 2h.75c0 2.25.25 4-2.75 4v3z"/></svg>
+        <button class="tool-btn" aria-label="Blockquote" onclick="insertAtCursor('> ')" title="Blockquote">
+          <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 21c3 0 7-1 7-8V5c0-1.25-.756-2.017-2-2H4c-1.25 0-2 .75-2 1.972V11c0 1.25.75 2 2 2 1 0 1 0 1 1v1c0 1-1 2-2 2s-1 .008-1 1.031V21z"/><path d="M15 21c3 0 7-1 7-8V5c0-1.25-.757-2.017-2-2h-4c-1.25 0-2 .75-2 1.972V11c0 1.25.75 2 2 2h.75c0 2.25.25 4-2.75 4v3z"/></svg>
         </button>
         <!-- Code block -->
-        <button class="tool-btn" onclick="insertCodeBlock()" title="Code Block">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><polyline points="9 8 5 12 9 16"/><polyline points="15 8 19 12 15 16"/></svg>
+        <button class="tool-btn" aria-label="Code Block" onclick="insertCodeBlock()" title="Code Block">
+          <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><polyline points="9 8 5 12 9 16"/><polyline points="15 8 19 12 15 16"/></svg>
         </button>
         <!-- Table -->
-        <button class="tool-btn" onclick="insertTable()" title="Table">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><line x1="3" y1="9" x2="21" y2="9"/><line x1="3" y1="15" x2="21" y2="15"/><line x1="12" y1="3" x2="12" y2="21"/></svg>
+        <button class="tool-btn" aria-label="Table" onclick="insertTable()" title="Table">
+          <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><line x1="3" y1="9" x2="21" y2="9"/><line x1="3" y1="15" x2="21" y2="15"/><line x1="12" y1="3" x2="12" y2="21"/></svg>
         </button>
         <!-- HR -->
-        <button class="tool-btn" onclick="insertAtCursor('---')" title="Horizontal Rule">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="2" y1="12" x2="22" y2="12"/></svg>
+        <button class="tool-btn" aria-label="Horizontal Rule" onclick="insertAtCursor('---')" title="Horizontal Rule">
+          <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="2" y1="12" x2="22" y2="12"/></svg>
         </button>
         <!-- Link -->
-        <button class="tool-btn" onclick="insertLink()" title="Link (Ctrl+K)">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg>
+        <button class="tool-btn" aria-label="Link" onclick="insertLink()" title="Link (Ctrl+K)">
+          <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg>
         </button>
 
         <div class="divider"></div>
 
+        <!-- Reading font + size (Aa) -->
+        <div class="dropdown" id="readingDropdown">
+          <button class="tool-btn" onclick="toggleDropdown('readingDropdown')" aria-label="Reading font and size" title="Reading font &amp; size" style="font-family:'Literata',serif;font-weight:600">Aa</button>
+          <div class="dropdown-menu" style="min-width:180px">
+            <div class="dropdown-item" onclick="setReadingFont('Literata')" data-font="Literata" style="font-family:'Literata',serif">Literata</div>
+            <div class="dropdown-item" onclick="setReadingFont('Source Serif 4')" data-font="Source Serif 4" style="font-family:'Source Serif 4',serif">Source Serif</div>
+            <div class="dropdown-item" onclick="setReadingFont('Merriweather')" data-font="Merriweather" style="font-family:'Merriweather',serif">Merriweather</div>
+            <div class="dropdown-item" onclick="setReadingFont('Inter')" data-font="Inter" style="font-family:'Inter',sans-serif">Inter</div>
+            <div class="dropdown-item" onclick="setReadingFont('JetBrains Mono')" data-font="JetBrains Mono" style="font-family:'JetBrains Mono',monospace">Mono</div>
+            <div class="reading-size-row">
+              <button class="reading-size-btn" onclick="stepReadingSize(-1, event)" aria-label="Decrease text size">A&minus;</button>
+              <span id="readingSizeLabel">18px</span>
+              <button class="reading-size-btn" onclick="stepReadingSize(1, event)" aria-label="Increase text size">A+</button>
+            </div>
+          </div>
+        </div>
+
         <!-- Export dropdown -->
         <div class="dropdown" id="exportDropdown">
-          <button class="tool-btn" onclick="toggleDropdown('exportDropdown')" title="Download">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+          <button class="tool-btn" aria-label="Download" aria-haspopup="menu" aria-expanded="false" onclick="toggleDropdown('exportDropdown')" title="Download">
+            <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
           </button>
           <div class="dropdown-menu">
             <div class="dropdown-item" onclick="exportMd();closeDropdowns()">.md</div>
@@ -482,12 +709,16 @@
           </div>
         </div>
         <!-- Share -->
-        <button class="tool-btn" onclick="shareDoc()" title="Copy Share Link">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/></svg>
+        <button class="tool-btn" aria-label="Share" onclick="shareDoc()" title="Copy Share Link">
+          <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/></svg>
+        </button>
+        <!-- Theme toggle -->
+        <button class="tool-btn" onclick="toggleTheme()" aria-label="Toggle light/dark theme" title="Toggle theme">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
         </button>
         <!-- Clear -->
-        <button class="tool-btn" onclick="clearDoc()" title="Clear Document">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
+        <button class="tool-btn" aria-label="Clear" onclick="clearDoc()" title="Clear Document">
+          <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
         </button>
       </div>
     </div>
@@ -503,11 +734,83 @@
   <!-- Notion-style slash command menu -->
   <div id="slashMenu" role="listbox" aria-label="Insert block"></div>
 
+  <!-- Medium-style selection bubble -->
+  <div id="selBubble" role="toolbar" aria-label="Format selection">
+    <button onmousedown="bubbleAction(event, '**')" aria-label="Bold" title="Bold"><b>B</b></button>
+    <button onmousedown="bubbleAction(event, '*')" aria-label="Italic" title="Italic"><i>I</i></button>
+    <button onmousedown="bubbleAction(event, '~~')" aria-label="Strikethrough" title="Strikethrough"><s>S</s></button>
+    <button onmousedown="bubbleAction(event, '\`')" aria-label="Inline code" title="Inline code">&lt;&gt;</button>
+    <button onmousedown="bubbleLink(event)" aria-label="Link" title="Link">&#128279;</button>
+  </div>
+
+  <!-- My documents panel -->
+  <div id="docsPanel" aria-label="My documents">
+    <div class="docs-header">
+      <h3>My documents</h3>
+      <div class="docs-header-actions">
+        <button class="docs-hbtn" onclick="newDoc()" title="New document">New</button>
+        <button class="docs-hbtn" onclick="closeDocsPanel()" aria-label="Close panel" title="Close">&times;</button>
+      </div>
+    </div>
+    <div class="docs-list" id="docsList"></div>
+  </div>
+
+  <!-- Find & replace bar -->
+  <div id="findBar" role="search">
+    <input id="findInput" type="text" placeholder="Find" oninput="updateFind()" onkeydown="findInputKey(event)" aria-label="Find">
+    <span id="findCount" class="find-count"></span>
+    <button class="find-btn" onclick="findPrev()" aria-label="Previous match" title="Previous (Shift+Enter)">&uarr;</button>
+    <button class="find-btn" onclick="findNext()" aria-label="Next match" title="Next (Enter)">&darr;</button>
+    <button class="find-btn" id="findCase" onclick="toggleFindCase()" aria-label="Match case" title="Match case">Aa</button>
+    <input id="replaceInput" type="text" placeholder="Replace" aria-label="Replace">
+    <button class="find-btn" onclick="replaceOne()" title="Replace current match">Replace</button>
+    <button class="find-btn" onclick="replaceAll()" title="Replace all matches">All</button>
+    <button class="find-btn" onclick="closeFind()" aria-label="Close find" title="Close (Esc)">&times;</button>
+  </div>
+
   <!-- Footer -->
   <div id="footer">
+    <span id="docStats">0 words</span>
+    <span>·</span>
     <span>Editor</span>
     <span>-</span>
     <a href="https://sanath.dev" target="_blank">sanath.dev</a>
+    <span>·</span>
+    <button id="shortcutsBtn" onclick="openShortcuts()" aria-label="Keyboard shortcuts" title="Keyboard shortcuts (?)">?</button>
+  </div>
+
+  <!-- Keyboard shortcut help overlay -->
+  <div id="shortcutsOverlay" onclick="if(event.target===this)closeShortcuts()">
+    <div class="shortcuts-card" role="dialog" aria-modal="true" aria-label="Keyboard shortcuts">
+      <div class="shortcuts-head">
+        <h3>Keyboard shortcuts</h3>
+        <button class="shortcuts-close" onclick="closeShortcuts()" aria-label="Close">&times;</button>
+      </div>
+      <div class="shortcuts-grid">
+        <div class="shortcuts-group">
+          <h4>Formatting</h4>
+          <div class="sc"><span>Bold</span><kbd>⌘/Ctrl B</kbd></div>
+          <div class="sc"><span>Italic</span><kbd>⌘/Ctrl I</kbd></div>
+          <div class="sc"><span>Link</span><kbd>⌘/Ctrl K</kbd></div>
+        </div>
+        <div class="shortcuts-group">
+          <h4>History</h4>
+          <div class="sc"><span>Undo</span><kbd>⌘/Ctrl Z</kbd></div>
+          <div class="sc"><span>Redo</span><kbd>⌘/Ctrl ⇧ Z</kbd></div>
+        </div>
+        <div class="shortcuts-group">
+          <h4>Lines &amp; lists</h4>
+          <div class="sc"><span>New line / continue list</span><kbd>Enter</kbd></div>
+          <div class="sc"><span>Indent list item</span><kbd>Tab</kbd></div>
+          <div class="sc"><span>Delete selected lines</span><kbd>⌫</kbd></div>
+        </div>
+        <div class="shortcuts-group">
+          <h4>Help</h4>
+          <div class="sc"><span>This overlay</span><kbd>?</kbd></div>
+          <div class="sc"><span>Close</span><kbd>Esc</kbd></div>
+        </div>
+      </div>
+    </div>
   </div>
 
   <script>
@@ -515,6 +818,11 @@
     let lines = []; // Array of raw markdown strings, one per line
     let editingLine = -1; // Index of the line currently being edited
     let collapsedHeadings = new Set(); // Set of line indices that are collapsed
+    // Find & replace state
+    let findOpen = false;
+    let findMatches = []; // [{ line, start }] over the raw lines[] source
+    let findIndex = 0;
+    let findCaseSensitive = false;
     let undoStack = [];
     let redoStack = [];
     const MAX_UNDO = 100;
@@ -534,7 +842,7 @@
 
     function classifyLine(text) {
       if (/^#{1,6}\s/.test(text)) return 'heading';
-      if (/^```/.test(text)) return 'codefence';
+      if (/^\s*```/.test(text)) return 'codefence';
       if (/^>\s?/.test(text)) return 'blockquote';
       if (/^[-*+]\s\[[ x]\]\s/.test(text)) return 'checklist';
       if (/^[-*+]\s/.test(text)) return 'bullet';
@@ -554,6 +862,36 @@
       const match = text.match(/^(\s*)/);
       if (!match) return 0;
       return Math.floor(match[1].length / 2);
+    }
+
+    // Sequential display numbers for ordered-list items (1,2,3…) keyed by line
+    // index, respecting indent level (nested lists number independently). A run
+    // breaks on a blank line or a non-list line. Raw source is never changed.
+    let _orderedNums = {};
+    function computeOrderedNumbers() {
+      const map = {};
+      const counters = {};   // indent level -> current count
+      const resetDeeper = (lvl) => { for (const k in counters) if (Number(k) > lvl) delete counters[k]; };
+      for (let i = 0; i < lines.length; i++) {
+        const t = lines[i];
+        const ordered = /^\s*\d+\.\s/.test(t);
+        const bullet = /^\s*[-*+]\s/.test(t);
+        if (t.trim() === '' || (!ordered && !bullet)) { for (const k in counters) delete counters[k]; continue; }
+        const lvl = getIndentLevel(t);
+        resetDeeper(lvl);
+        if (ordered) {
+          if (counters[lvl] === undefined) {            // first at this level → honor explicit start
+            const m = t.match(/^\s*(\d+)\./);
+            counters[lvl] = m ? parseInt(m[1], 10) : 1;
+          } else {
+            counters[lvl] += 1;
+          }
+          map[i] = counters[lvl];
+        } else {
+          delete counters[lvl];   // a bullet at this level restarts ordered numbering after it
+        }
+      }
+      return map;
     }
 
     function getHeadingLevel(text) {
@@ -623,7 +961,7 @@
         case 'numbered-indent': {
           const stripped = text.trimStart();
           const match = stripped.match(/^(\d+)\.\s(.*)/);
-          const num = match ? match[1] : '1';
+          const num = _orderedNums[idx] != null ? _orderedNums[idx] : (match ? match[1] : '1');
           const content = match ? match[2] : stripped;
           const indent = getIndentLevel(text);
           return `<div style="padding-left:${indent * 1.5}em"><span style="color:#565f89;margin-right:6px">${num}.</span>${renderInline(content)}</div>`;
@@ -648,7 +986,7 @@
       const ranges = [];
       let start = -1;
       for (let i = 0; i < lines.length; i++) {
-        if (/^```/.test(lines[i])) {
+        if (/^\s*```/.test(lines[i])) {
           if (start === -1) { start = i; }
           else { ranges.push([start, i]); start = -1; }
         }
@@ -720,6 +1058,81 @@
       return `<div class="line" data-line="${start}"><div class="line-preview"><blockquote class="bq-group">${inner}</blockquote></div></div>`;
     }
 
+    // ---- List grouping (real nested <ul>/<ol>/<li>) ----
+    // A list line is a bullet/checklist/numbered item at any indent.
+    function isListLine(t) { return /^(\s*)([-*+]\s(\[[ xX]\]\s)?|\d+\.\s)/.test(t); }
+
+    function getListRanges() {
+      const ranges = []; let start = -1;
+      for (let i = 0; i < lines.length; i++) {
+        if (isListLine(lines[i])) { if (start === -1) start = i; }
+        else { if (start !== -1) { ranges.push([start, i - 1]); start = -1; } }
+      }
+      if (start !== -1) ranges.push([start, lines.length - 1]);
+      return ranges;
+    }
+
+    // Indent level: each tab = 1 level, every 2 spaces = 1 level.
+    function listIndentLevel(text) {
+      const ws = (text.match(/^[ \t]*/) || [''])[0];
+      const tabs = (ws.match(/\t/g) || []).length;
+      const spaces = ws.replace(/\t/g, '').length;
+      return tabs + Math.floor(spaces / 2);
+    }
+
+    function parseListItem(text, line) {
+      const ordered = /^\s*\d+\.\s/.test(text);
+      const checkMatch = text.match(/^\s*[-*+]\s\[([ xX])\]\s/);
+      const isCheck = !!checkMatch;
+      const checked = isCheck && /x/i.test(checkMatch[1]);
+      let content, num = null;
+      if (ordered) {
+        const m = text.match(/^\s*(\d+)\.\s([\s\S]*)$/);
+        num = m ? parseInt(m[1], 10) : 1;
+        content = m ? m[2] : text.trim();
+      } else if (isCheck) {
+        content = text.replace(/^\s*[-*+]\s\[[ xX]\]\s/, '');
+      } else {
+        content = text.replace(/^\s*[-*+]\s/, '');
+      }
+      return { line, level: listIndentLevel(text), ordered, isCheck, checked, content, num };
+    }
+
+    // Build nested <ul>/<ol> HTML from a flat item list using a level stack.
+    // The clickable/editable content lives in a .li-content span; any nested list
+    // is a SIBLING of that span, so clicking a nested item never bubbles into the
+    // parent item's edit handler.
+    function buildListHtml(items) {
+      let i = 0;
+      function renderLevel(level) {
+        const ordered = items[i].ordered;
+        let out = ordered ? `<ol class="md-list" start="${items[i].num || 1}">` : '<ul class="md-list">';
+        while (i < items.length && items[i].level === level && items[i].ordered === ordered) {
+          const it = items[i];
+          i++;
+          const box = it.isCheck
+            ? `<input type="checkbox" ${it.checked ? 'checked' : ''} data-line="${it.line}"> `
+            : '';
+          const content = renderInline(it.content) || '&nbsp;';
+          const inner = `<span class="li-content" data-line="${it.line}" onclick="startEditLine(${it.line}, event)">${box}<span class="${it.isCheck && it.checked ? 'task-checked' : ''}">${content}</span></span>`;
+          let childHtml = '';
+          if (i < items.length && items[i].level > level) childHtml = renderLevel(items[i].level);
+          out += `<li class="${it.isCheck ? 'has-check' : ''}">${inner}${childHtml}</li>`;
+        }
+        out += ordered ? '</ol>' : '</ul>';
+        return out;
+      }
+      let html = '';
+      while (i < items.length) html += renderLevel(items[i].level);
+      return html;
+    }
+
+    function renderListGroup(start, end) {
+      const items = [];
+      for (let j = start; j <= end; j++) items.push(parseListItem(lines[j], j));
+      return `<div class="line" data-line="${start}"><div class="line-preview">${buildListHtml(items)}</div></div>`;
+    }
+
     // ========== Collapsed heading logic ==========
     function getHiddenLines() {
       const hidden = new Set();
@@ -742,12 +1155,15 @@
 
       if (lines.length === 0 && editingLine < 0) {
         editor.innerHTML = '<div style="text-align:center;padding:120px 20px;color:#565f89;"><h2 style="color:#a9b1d6;font-size:1.3em;margin-bottom:8px;">Start writing</h2><p style="font-size:14px;">Click anywhere to begin. Your document is stored in the URL.</p></div>';
+        updateStats();
         return;
       }
 
+      _orderedNums = computeOrderedNumbers();
       const codeRanges = getCodeBlockRanges();
       const tableRanges = getTableRanges();
       const bqRanges = getBlockquoteRanges();
+      const listRanges = getListRanges();
       const hiddenLines = getHiddenLines();
 
       let html = '';
@@ -776,8 +1192,16 @@
             const codeLines = lines.slice(codeRange.start, codeRange.end + 1);
             const lang = (lines[codeRange.start].match(/^```(\w*)/) || [])[1] || '';
             const codeContent = codeLines.slice(1, -1).join('\n');
-            html += `<div class="line" data-line="${codeRange.start}" data-code-end="${codeRange.end}" onclick="startEditLine(${codeRange.start}, event)">`;
-            html += `<div class="line-preview"><pre><code>${escapeHtml(codeContent)}</code></pre></div>`;
+            // Combined: #4's code-block bar (language label + copy button) wrapping
+            // #10's syntax-highlighted body (<code class="hljs">…highlightCode…).
+            html += `<div class="line code-block" data-line="${codeRange.start}" data-code-end="${codeRange.end}" onclick="startEditLine(${codeRange.start}, event)">`;
+            html += `<div class="line-preview">`;
+            html += `<div class="code-block-bar">`;
+            html += `<span class="code-lang">${lang ? escapeHtml(lang) : ''}</span>`;
+            html += `<button class="code-copy-btn" type="button" aria-label="Copy code" onclick="copyCodeBlock(${codeRange.start}, ${codeRange.end}, event)">Copy</button>`;
+            html += `</div>`;
+            html += `<pre><code class="hljs">${highlightCode(codeContent, lang)}</code></pre>`;
+            html += `</div>`;
             html += `</div>`;
             i = codeRange.end + 1;
             continue;
@@ -797,6 +1221,18 @@
           }
         }
 
+        // Group consecutive list items into real nested <ul>/<ol>. While a line in
+        // the run is being edited, fall through to per-line rendering.
+        const listRange = isInRange(i, listRanges);
+        if (listRange && i === listRange.start) {
+          const editingInList = editingLine >= listRange.start && editingLine <= listRange.end;
+          if (!editingInList) {
+            html += renderListGroup(listRange.start, listRange.end);
+            i = listRange.end + 1;
+            continue;
+          }
+        }
+
         // Single line rendering
         const line = lines[i];
         const isEditing = i === editingLine;
@@ -812,7 +1248,7 @@
         }
 
         if (isEditing) {
-          html += `<div class="line-editable${getEditingClass(line)}" id="lineInput" contenteditable="true" data-line="${i}">${escapeHtml(line)}</div>`;
+          html += `<div class="line-editable${getEditingClass(line)}" id="lineInput" contenteditable="true" data-line="${i}" data-placeholder="Type / for commands, or just start writing">${escapeHtml(line)}</div>`;
         } else {
           html += `<div class="line-preview">${renderLinePreview(line, i)}</div>`;
         }
@@ -822,6 +1258,7 @@
       }
 
       editor.innerHTML = html;
+      updateStats();
 
       // Focus editable if editing
       if (editingLine >= 0) {
@@ -847,6 +1284,16 @@
     function escapeHtml(s) {
       return s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
     }
+    // Syntax-highlight code (highlight.js). Uses the fence language when known,
+    // autodetects otherwise; falls back to escaped plain text if hljs is missing
+    // or errors. hljs output is HTML-escaped, so it's safe to inject.
+    function highlightCode(code, lang) {
+      if (typeof hljs === 'undefined') return escapeHtml(code);
+      try {
+        if (lang && hljs.getLanguage(lang)) return hljs.highlight(code, { language: lang, ignoreIllegals: true }).value;
+        return hljs.highlightAuto(code).value;
+      } catch { return escapeHtml(code); }
+    }
     function escapeAttr(s) {
       return s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
     }
@@ -854,12 +1301,25 @@
     // ========== Interactive Table ==========
     let editingCell = null; // { tableStart, row, col }
 
+    // Split a table row on UNescaped pipes; `\|` becomes a literal pipe in the cell.
+    function splitTableRow(line) {
+      const cells = [];
+      let cur = '';
+      for (let i = 0; i < line.length; i++) {
+        if (line[i] === '\\' && line[i + 1] === '|') { cur += '|'; i++; continue; }
+        if (line[i] === '|') { cells.push(cur); cur = ''; continue; }
+        cur += line[i];
+      }
+      cells.push(cur);
+      return cells;
+    }
+
     function parseTableLines(start, end) {
       const tableLines = lines.slice(start, end + 1);
       const rows = [];
       let separatorIdx = -1;
       for (let i = 0; i < tableLines.length; i++) {
-        const cells = tableLines[i].split('|').slice(1, -1).map(c => c.trim());
+        const cells = splitTableRow(tableLines[i]).slice(1, -1).map(c => c.trim());
         if (cells.length && cells.every(c => /^[-:]+$/.test(c))) {
           separatorIdx = i;
           continue;
@@ -877,7 +1337,8 @@
       for (const row of rows) {
         // Pad cells
         while (row.cells.length < colCount) row.cells.push('');
-        newLines.push('| ' + row.cells.join(' | ') + ' |');
+        // Re-escape literal pipes so the row round-trips through splitTableRow.
+        newLines.push('| ' + row.cells.map(c => String(c).replace(/\|/g, '\\|')).join(' | ') + ' |');
         if (row.isHeader && !headerDone) {
           newLines.push('| ' + row.cells.map(() => '---').join(' | ') + ' |');
           headerDone = true;
@@ -1186,6 +1647,10 @@
 
     // ========== Input handling ==========
     document.addEventListener('keydown', e => {
+      // Find & replace: works in any context, so handle it before other guards.
+      if ((e.ctrlKey || e.metaKey) && (e.key === 'f' || e.key === 'F')) { e.preventDefault(); openFind(); return; }
+      if (e.key === 'Escape' && findOpen) { e.preventDefault(); closeFind(); return; }
+
       // Skip if editing a table cell (handled by cell keydown)
       if (document.getElementById('cellInput')) return;
       
@@ -1383,13 +1848,47 @@
         lines[editingLine] = e.target.textContent;
         updateEditingVisualState(e.target, e.target.textContent);
         maybeSlash(e.target);
+        updateStats();
       }
     });
 
     // Handle paste - split multi-line content into separate lines
+    // Insert a markdown image line (data URI) after the current line, or at the end.
+    function insertImageDataUri(dataUri) {
+      pushUndo();
+      const imgLine = `![pasted](${dataUri})`;
+      if (editingLine >= 0) lines.splice(editingLine + 1, 0, imgLine);
+      else lines.push(imgLine);
+      editingLine = -1;
+      saveToUrl();
+      render();
+    }
+
+    // Read an image File as a data URI and embed it (no backend). Warns if large.
+    function embedImageFile(file) {
+      if (!file) return;
+      if (file.size > 1.5 * 1024 * 1024) showToast('Large image — may bloat the share link');
+      const reader = new FileReader();
+      reader.onload = () => { if (typeof reader.result === 'string') insertImageDataUri(reader.result); };
+      reader.readAsDataURL(file);
+    }
+
     document.addEventListener('paste', e => {
+      const cd = e.clipboardData || window.clipboardData;
+
+      // Image paste: embed as an inline data URI before falling through to text.
+      if (cd && cd.items) {
+        for (const item of cd.items) {
+          if (item.kind === 'file' && item.type && item.type.startsWith('image/')) {
+            e.preventDefault();
+            embedImageFile(item.getAsFile());
+            return;
+          }
+        }
+      }
+
       const input = document.getElementById('lineInput');
-      const text = (e.clipboardData || window.clipboardData).getData('text');
+      const text = cd.getData('text');
       if (!text) return;
       
       if (!input || editingLine < 0) {
@@ -1633,11 +2132,133 @@
       }, 0);
     }
 
+    // ========== Find & replace ==========
+    function openFind() {
+      findOpen = true;
+      document.getElementById('findBar').classList.add('open');
+      updateFind();
+      const inp = document.getElementById('findInput');
+      inp.focus(); inp.select();
+    }
+
+    function closeFind() {
+      findOpen = false;
+      document.getElementById('findBar').classList.remove('open');
+      clearFindHighlight();
+    }
+
+    function clearFindHighlight() {
+      document.querySelectorAll('.line.find-current').forEach(l => l.classList.remove('find-current'));
+    }
+
+    function computeMatches(query) {
+      const matches = [];
+      if (!query) return matches;
+      const q = findCaseSensitive ? query : query.toLowerCase();
+      for (let i = 0; i < lines.length; i++) {
+        const hay = findCaseSensitive ? lines[i] : lines[i].toLowerCase();
+        let pos = 0, idx;
+        while ((idx = hay.indexOf(q, pos)) !== -1) {
+          matches.push({ line: i, start: idx });
+          pos = idx + q.length;
+        }
+      }
+      return matches;
+    }
+
+    // Recompute matches (after query/case change or an edit shifts positions).
+    function updateFind() {
+      const query = document.getElementById('findInput').value;
+      findMatches = computeMatches(query);
+      if (findIndex >= findMatches.length) findIndex = 0;
+      renderFindState();
+    }
+
+    // Update count + current-line highlight without recomputing matches.
+    function renderFindState() {
+      const query = document.getElementById('findInput').value;
+      const countEl = document.getElementById('findCount');
+      countEl.textContent = findMatches.length ? `${findIndex + 1}/${findMatches.length}` : (query ? '0/0' : '');
+      clearFindHighlight();
+      if (!findMatches.length) return;
+      const lineEl = document.querySelector(`.line[data-line="${findMatches[findIndex].line}"]`);
+      if (lineEl) {
+        lineEl.classList.add('find-current');
+        lineEl.scrollIntoView({ block: 'center', behavior: 'smooth' });
+      }
+    }
+
+    function findNext() {
+      if (!findMatches.length) return;
+      findIndex = (findIndex + 1) % findMatches.length;
+      renderFindState();
+    }
+    function findPrev() {
+      if (!findMatches.length) return;
+      findIndex = (findIndex - 1 + findMatches.length) % findMatches.length;
+      renderFindState();
+    }
+    function toggleFindCase() {
+      findCaseSensitive = !findCaseSensitive;
+      document.getElementById('findCase').classList.toggle('active', findCaseSensitive);
+      updateFind();
+    }
+
+    function findInputKey(e) {
+      if (e.key === 'Enter') { e.preventDefault(); e.shiftKey ? findPrev() : findNext(); }
+      else if (e.key === 'Escape') { e.preventDefault(); closeFind(); }
+    }
+
+    function replaceOne() {
+      if (!findMatches.length) return;
+      if (editingLine >= 0) commitEdit();
+      const query = document.getElementById('findInput').value;
+      const repl = document.getElementById('replaceInput').value;
+      const m = findMatches[findIndex];
+      pushUndo();
+      const line = lines[m.line];
+      lines[m.line] = line.slice(0, m.start) + repl + line.slice(m.start + query.length);
+      saveToUrl();
+      render();
+      updateFind();
+    }
+
+    function replaceAll() {
+      const query = document.getElementById('findInput').value;
+      if (!query || !findMatches.length) return;
+      if (editingLine >= 0) commitEdit();
+      const repl = document.getElementById('replaceInput').value;
+      pushUndo();
+      const q = findCaseSensitive ? query : query.toLowerCase();
+      for (let i = 0; i < lines.length; i++) {
+        const hay = lines[i];
+        const low = findCaseSensitive ? hay : hay.toLowerCase();
+        let result = '', pos = 0, idx;
+        while ((idx = low.indexOf(q, pos)) !== -1) {
+          result += hay.slice(pos, idx) + repl;
+          pos = idx + q.length;
+        }
+        result += hay.slice(pos);
+        lines[i] = result;
+      }
+      saveToUrl();
+      render();
+      updateFind();
+    }
+
     // ========== Undo/Redo ==========
     function pushUndo() {
       undoStack.push({ lines: [...lines], editing: editingLine, collapsed: new Set(collapsedHeadings) });
       if (undoStack.length > MAX_UNDO) undoStack.shift();
       redoStack = [];
+    }
+
+    // Drop any collapsed index that isn't actually a heading in the current lines,
+    // so undo/redo can never leave the wrong (or a non-) heading collapsed.
+    function reconcileCollapsed() {
+      for (const idx of [...collapsedHeadings]) {
+        if (idx >= lines.length || getHeadingLevel(lines[idx]) === 0) collapsedHeadings.delete(idx);
+      }
     }
 
     function doUndo() {
@@ -1646,7 +2267,8 @@
       const state = undoStack.pop();
       lines = state.lines;
       editingLine = -1;
-      collapsedHeadings = state.collapsed;
+      collapsedHeadings = new Set(state.collapsed);   // copy, don't alias the stack entry
+      reconcileCollapsed();
       saveToUrl();
       render();
     }
@@ -1657,7 +2279,8 @@
       const state = redoStack.pop();
       lines = state.lines;
       editingLine = -1;
-      collapsedHeadings = state.collapsed;
+      collapsedHeadings = new Set(state.collapsed);
+      reconcileCollapsed();
       saveToUrl();
       render();
     }
@@ -1671,6 +2294,7 @@
       }
       const compressed = LZString.compressToEncodedURIComponent(md);
       history.replaceState(null, '', '#doc=' + compressed);
+      scheduleAutosave();
     }
 
     function loadFromUrl() {
@@ -1705,6 +2329,8 @@
       wrapper.querySelectorAll('code').forEach(el => { el.style.background = '#f0f0f0'; el.style.color = '#c7254e'; });
       wrapper.querySelectorAll('pre').forEach(el => { el.style.background = '#f5f5f5'; el.style.border = '1px solid #ddd'; });
       wrapper.querySelectorAll('pre code').forEach(el => { el.style.background = 'none'; el.style.color = '#333'; });
+      // Force highlight.js token spans to dark ink so code stays legible on white.
+      wrapper.querySelectorAll('pre code *').forEach(el => { el.style.color = '#333'; });
       wrapper.querySelectorAll('blockquote').forEach(el => { el.style.borderColor = '#999'; el.style.color = '#666'; });
       wrapper.querySelectorAll('hr').forEach(el => el.style.borderColor = '#ccc');
       wrapper.querySelectorAll('h2').forEach(el => el.style.borderColor = '#ccc');
@@ -1734,10 +2360,20 @@
       a.click();
     }
 
+    // Browsers/messengers truncate long URLs well below lz-string's capacity, so
+    // warn (but still copy) when the share link is too long to be reliable.
+    const SHARE_WARN_LEN = 8000;
     function shareDoc() {
       commitEdit();
       saveToUrl();
-      navigator.clipboard.writeText(location.href).then(() => showToast('Link copied!'));
+      const href = location.href;
+      navigator.clipboard.writeText(href).then(() => {
+        if (href.length > SHARE_WARN_LEN) {
+          showToast('Link copied, but it is very long and may be truncated by some apps — keep a copy of your document.', 5000);
+        } else {
+          showToast('Link copied!');
+        }
+      });
     }
 
     function clearDoc() {
@@ -1849,12 +2485,300 @@
       if (e.target && e.target.id === 'lineInput') setTimeout(closeSlash, 150);
     });
 
-    function showToast(msg) {
+    // ========== Selection bubble (Medium-style inline formatting) ==========
+    function updateSelectionBubble() {
+      const bubble = document.getElementById('selBubble');
+      const input = document.getElementById('lineInput');
+      const sel = window.getSelection();
+      if (!input || !sel || sel.isCollapsed || !sel.rangeCount) { bubble.classList.remove('show'); return; }
+      const range = sel.getRangeAt(0);
+      if (!input.contains(range.commonAncestorContainer)) { bubble.classList.remove('show'); return; }
+      const rect = range.getBoundingClientRect();
+      if (!rect || (rect.width === 0 && rect.height === 0)) { bubble.classList.remove('show'); return; }
+      bubble.classList.add('show');
+      const bw = bubble.offsetWidth, bh = bubble.offsetHeight;
+      let top = rect.top - bh - 8;
+      if (top < 4) top = rect.bottom + 8;        // flip below if no room above
+      let left = rect.left + rect.width / 2 - bw / 2;
+      left = Math.max(8, Math.min(left, window.innerWidth - bw - 8));
+      bubble.style.top = top + 'px';
+      bubble.style.left = left + 'px';
+    }
+    function hideSelectionBubble() { document.getElementById('selBubble').classList.remove('show'); }
+
+    function bubbleAction(e, wrapper) {
+      e.preventDefault();   // keep the selection in the contenteditable
+      wrapSelection(wrapper);
+      hideSelectionBubble();
+    }
+    function bubbleLink(e) {
+      e.preventDefault();
+      insertLink();
+      hideSelectionBubble();
+    }
+    document.addEventListener('selectionchange', updateSelectionBubble);
+    // Reposition/hide on scroll of the writing area.
+    document.addEventListener('scroll', () => { if (document.getElementById('selBubble').classList.contains('show')) updateSelectionBubble(); }, true);
+
+    // ========== Reading typography (font + size) ==========
+    const READING_FONTS = {
+      'Literata': "'Literata', Georgia, serif",
+      'Source Serif 4': "'Source Serif 4', Georgia, serif",
+      'Merriweather': "'Merriweather', Georgia, serif",
+      'Inter': "'Inter', -apple-system, sans-serif",
+      'JetBrains Mono': "'JetBrains Mono', monospace",
+    };
+    const READING_MIN = 14, READING_MAX = 24;
+
+    function applyReadingFont(name) {
+      const stack = READING_FONTS[name] || READING_FONTS['Literata'];
+      document.documentElement.style.setProperty('--reading-font', stack);
+      document.querySelectorAll('#readingDropdown .dropdown-item[data-font]').forEach(el => {
+        el.classList.toggle('active', el.dataset.font === name);
+      });
+    }
+    function applyReadingSize(px) {
+      const clamped = Math.max(READING_MIN, Math.min(READING_MAX, px));
+      document.documentElement.style.setProperty('--reading-size', clamped + 'px');
+      const label = document.getElementById('readingSizeLabel');
+      if (label) label.textContent = clamped + 'px';
+      return clamped;
+    }
+    function setReadingFont(name) {
+      applyReadingFont(name);
+      try { localStorage.setItem('readingFont', name); } catch (e) {}
+    }
+    function currentReadingSize() {
+      const v = parseInt(getComputedStyle(document.documentElement).getPropertyValue('--reading-size'), 10);
+      return isNaN(v) ? 18 : v;
+    }
+    function stepReadingSize(delta, e) {
+      if (e) e.stopPropagation();   // keep the dropdown open while stepping
+      const next = applyReadingSize(currentReadingSize() + delta * 2);
+      try { localStorage.setItem('readingSize', String(next)); } catch (e) {}
+    }
+    function initReading() {
+      let font = 'Literata', size = 18;
+      try {
+        font = localStorage.getItem('readingFont') || 'Literata';
+        size = parseInt(localStorage.getItem('readingSize'), 10) || 18;
+      } catch (e) {}
+      applyReadingFont(font);
+      applyReadingSize(size);
+    }
+
+    // ========== Theme ==========
+    function applyTheme(t) {
+      if (t === 'dark') document.documentElement.setAttribute('data-theme', 'dark');
+      else document.documentElement.removeAttribute('data-theme');
+    }
+    function currentTheme() {
+      return document.documentElement.getAttribute('data-theme') === 'dark' ? 'dark' : 'light';
+    }
+    function toggleTheme() {
+      const next = currentTheme() === 'dark' ? 'light' : 'dark';
+      try { localStorage.setItem('theme', next); } catch (e) {}
+      applyTheme(next);
+    }
+
+    // ========== Keyboard shortcut help overlay ==========
+    function openShortcuts() { document.getElementById('shortcutsOverlay').classList.add('open'); }
+    function closeShortcuts() { document.getElementById('shortcutsOverlay').classList.remove('open'); }
+    document.addEventListener('keydown', e => {
+      const overlay = document.getElementById('shortcutsOverlay');
+      if (e.key === 'Escape' && overlay.classList.contains('open')) { e.preventDefault(); closeShortcuts(); return; }
+      // "?" opens it, but never while typing in a line or table cell.
+      if (e.key === '?' && !document.getElementById('lineInput') && !document.getElementById('cellInput')) {
+        e.preventDefault();
+        openShortcuts();
+      }
+    });
+
+    // Live footer stats: words / chars / reading time. Words skip fenced code.
+    function updateStats() {
+      const el = document.getElementById('docStats');
+      if (!el) return;
+      let inFence = false, words = 0;
+      for (const line of lines) {
+        if (/^```/.test(line)) { inFence = !inFence; continue; }
+        if (inFence) continue;
+        const m = line.trim().match(/\S+/g);
+        if (m) words += m.length;
+      }
+      const chars = lines.join('\n').length;
+      if (words === 0 && chars === 0) { el.textContent = '0 words'; return; }
+      const mins = Math.max(1, Math.ceil(words / 200));
+      el.textContent = `${words.toLocaleString()} words · ${chars.toLocaleString()} chars · ~${mins} min read`;
+    }
+
+    function copyCodeBlock(start, end, e) {
+      if (e) e.stopPropagation(); // don't fall through to click-to-edit
+      // Copy the raw source lines between the fences — exact text, no HTML entities.
+      const code = lines.slice(start + 1, end).join('\n');
+      navigator.clipboard.writeText(code).then(() => showToast('Copied'));
+    }
+
+    function showToast(msg, duration = 2000) {
       const t = document.createElement('div');
       t.className = 'toast';
       t.textContent = msg;
       document.body.appendChild(t);
-      setTimeout(() => t.remove(), 2000);
+      setTimeout(() => t.remove(), duration);
+    }
+
+    // ========== My documents (IndexedDB persistence, no backend) ==========
+    let currentDocId = null;     // id of the doc currently open (null = unsaved/shared)
+    let autosaveTimer = null;
+    const DOCS_DB = 'editorDocs', DOCS_STORE = 'docs';
+
+    function idbOpen() {
+      return new Promise((resolve, reject) => {
+        let req;
+        try { req = indexedDB.open(DOCS_DB, 1); }
+        catch (e) { reject(e); return; }
+        req.onupgradeneeded = () => {
+          const db = req.result;
+          if (!db.objectStoreNames.contains(DOCS_STORE)) db.createObjectStore(DOCS_STORE, { keyPath: 'id' });
+        };
+        req.onsuccess = () => resolve(req.result);
+        req.onerror = () => reject(req.error);
+      });
+    }
+    function idbPut(doc) {
+      return idbOpen().then(db => new Promise((resolve, reject) => {
+        const tx = db.transaction(DOCS_STORE, 'readwrite');
+        tx.objectStore(DOCS_STORE).put(doc);
+        tx.oncomplete = () => resolve(doc);
+        tx.onerror = () => reject(tx.error);
+      }));
+    }
+    function idbGetAll() {
+      return idbOpen().then(db => new Promise((resolve, reject) => {
+        const req = db.transaction(DOCS_STORE, 'readonly').objectStore(DOCS_STORE).getAll();
+        req.onsuccess = () => resolve(req.result || []);
+        req.onerror = () => reject(req.error);
+      }));
+    }
+    function idbGet(id) {
+      return idbOpen().then(db => new Promise((resolve, reject) => {
+        const req = db.transaction(DOCS_STORE, 'readonly').objectStore(DOCS_STORE).get(id);
+        req.onsuccess = () => resolve(req.result || null);
+        req.onerror = () => reject(req.error);
+      }));
+    }
+    function idbDelete(id) {
+      return idbOpen().then(db => new Promise((resolve, reject) => {
+        const tx = db.transaction(DOCS_STORE, 'readwrite');
+        tx.objectStore(DOCS_STORE).delete(id);
+        tx.oncomplete = () => resolve();
+        tx.onerror = () => reject(tx.error);
+      }));
+    }
+
+    function newDocId() {
+      return (crypto.randomUUID && crypto.randomUUID()) || ('doc-' + Date.now() + '-' + Math.random().toString(36).slice(2));
+    }
+    // Title = first non-empty line, markdown markers stripped.
+    function docTitle() {
+      for (const l of lines) {
+        const t = l.replace(/^#{1,6}\s+/, '').replace(/^>\s?/, '').replace(/^[-*+]\s+(\[[ x]\]\s+)?/, '').trim();
+        if (t) return t.slice(0, 80);
+      }
+      return 'Untitled';
+    }
+
+    // Debounced auto-save of the current doc, alongside the URL-hash save.
+    function scheduleAutosave() {
+      if (autosaveTimer) clearTimeout(autosaveTimer);
+      autosaveTimer = setTimeout(autosaveNow, 800);
+    }
+    function autosaveNow() {
+      const content = lines.join('\n');
+      if (!content.trim()) return;     // don't persist empty docs
+      const id = currentDocId || newDocId();
+      currentDocId = id;
+      idbPut({ id, title: docTitle(), content, updated: Date.now() })
+        .then(() => { if (isDocsPanelOpen()) refreshDocsList(); })
+        .catch(() => {});
+    }
+
+    function isDocsPanelOpen() { return document.getElementById('docsPanel').classList.contains('open'); }
+    function toggleDocsPanel() { isDocsPanelOpen() ? closeDocsPanel() : openDocsPanel(); }
+    function openDocsPanel() { document.getElementById('docsPanel').classList.add('open'); refreshDocsList(); }
+    function closeDocsPanel() { document.getElementById('docsPanel').classList.remove('open'); }
+
+    function fmtDocDate(ts) { try { return new Date(ts).toLocaleString(); } catch { return ''; } }
+
+    function refreshDocsList() {
+      idbGetAll().then(docs => {
+        docs.sort((a, b) => b.updated - a.updated);
+        const list = document.getElementById('docsList');
+        if (!docs.length) { list.innerHTML = '<div class="docs-empty">No saved documents yet.</div>'; return; }
+        list.innerHTML = docs.map(d => `
+          <div class="doc-item${d.id === currentDocId ? ' active' : ''}" data-id="${escapeAttr(d.id)}">
+            <button class="doc-open" onclick="openDoc('${escapeAttr(d.id)}')" title="Open">
+              <span class="doc-title">${escapeHtml(d.title)}</span>
+              <span class="doc-date">${escapeHtml(fmtDocDate(d.updated))}</span>
+            </button>
+            <button class="doc-action" onclick="renameDoc('${escapeAttr(d.id)}')" aria-label="Rename document" title="Rename">&#9998;</button>
+            <button class="doc-action" onclick="deleteDoc('${escapeAttr(d.id)}')" aria-label="Delete document" title="Delete">&#128465;</button>
+          </div>`).join('');
+      }).catch(() => {});
+    }
+
+    function openDoc(id) {
+      idbGet(id).then(doc => {
+        if (!doc) return;
+        commitEdit();
+        currentDocId = id;
+        lines = doc.content.split('\n');
+        editingLine = -1;
+        collapsedHeadings.clear();
+        saveToUrl();   // share URL reflects the open doc
+        render();
+        closeDocsPanel();
+        showToast('Opened');
+      });
+    }
+
+    function renameDoc(id) {
+      idbGet(id).then(doc => {
+        if (!doc) return;
+        const name = prompt('Rename document', doc.title);
+        if (name == null) return;
+        doc.title = name.trim() || doc.title;
+        idbPut(doc).then(() => refreshDocsList());
+      });
+    }
+
+    function deleteDoc(id) {
+      if (!confirm('Delete this document? This cannot be undone.')) return;
+      idbDelete(id).then(() => {
+        if (id === currentDocId) currentDocId = null;
+        refreshDocsList();
+      });
+    }
+
+    function newDoc() {
+      commitEdit();
+      currentDocId = null;
+      lines = [];
+      editingLine = -1;
+      collapsedHeadings.clear();
+      saveToUrl();
+      render();
+      closeDocsPanel();
+    }
+
+    // On bare URL (no #doc=), recover the most recently edited doc.
+    function recoverRecentDoc() {
+      idbGetAll().then(docs => {
+        if (!docs.length) return;
+        docs.sort((a, b) => b.updated - a.updated);
+        currentDocId = docs[0].id;
+        lines = docs[0].content.split('\n');
+        render();
+      }).catch(() => {});
     }
 
     // ========== Dropdowns ==========
@@ -1862,32 +2786,55 @@
       const el = document.getElementById(id);
       const wasOpen = el.classList.contains('open');
       closeDropdowns();
-      if (!wasOpen) el.classList.add('open');
+      if (!wasOpen) {
+        el.classList.add('open');
+        const toggle = el.querySelector('.tool-btn[aria-haspopup]');
+        if (toggle) toggle.setAttribute('aria-expanded', 'true');
+      }
     }
     function closeDropdowns() {
-      document.querySelectorAll('.dropdown').forEach(d => d.classList.remove('open'));
+      document.querySelectorAll('.dropdown').forEach(d => {
+        d.classList.remove('open');
+        const toggle = d.querySelector('.tool-btn[aria-haspopup]');
+        if (toggle) toggle.setAttribute('aria-expanded', 'false');
+      });
     }
     document.addEventListener('click', e => {
       if (!e.target.closest('.dropdown')) closeDropdowns();
     });
+
+    // A present-but-undecodable #doc= means a truncated/corrupt share link; fail
+    // loudly instead of silently rendering a blank document.
+    function warnIfCorruptHash(doc) {
+      if (!doc && location.hash.startsWith('#doc=')) {
+        showToast("Couldn't load this link — it may be truncated or corrupt.", 5000);
+      }
+    }
 
     // ========== Init ==========
     function init() {
       const doc = loadFromUrl();
       if (doc) {
         lines = doc.split('\n');
+        render();
+      } else {
+        warnIfCorruptHash(doc);   // #13: a present-but-undecodable #doc= warns loudly
+        render();
+        recoverRecentDoc();       // #7: no hash → restore most recent IndexedDB doc
       }
-      render();
     }
 
     window.addEventListener('hashchange', () => {
       const doc = loadFromUrl();
+      warnIfCorruptHash(doc);
       lines = doc ? doc.split('\n') : [];
       editingLine = -1;
+      currentDocId = null;   // a navigated/shared hash is its own doc
       collapsedHeadings.clear();
       render();
     });
 
+    initReading();
     init();
   </script>
 </body>
